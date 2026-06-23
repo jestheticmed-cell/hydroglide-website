@@ -11,17 +11,17 @@ export function Footer() {
   const footerTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif]";
   const customerLinks = [
     { href: "/contact", label: "Contact Us" },
-    { href: "/#support", label: "After-Sales Support" },
+    { href: "/after-sales-support", label: "After-Sales Support" },
     { href: "/shipping-delivery", label: "Shipping Guide" },
     { href: "/faq", label: "FAQ" },
     { href: "/#manuals", label: "Product Manuals" },
-    { href: "/privacy-policy", label: "Privacy policy" },
-    { href: "/return-policy", label: "Return policy" }
+    { href: "/privacy-policy", label: "Privacy Policy" },
+    { href: "/return-policy", label: "Return Policy" }
   ];
   const productLinks = [
-    { href: "/#efoils", label: "EFOIL LINE" },
-    { href: "/#best-sellers", label: "BEST SELLERS" },
-    { href: "/#accessories", label: "ACCESSORIES" }
+    { href: "/#efoils", label: "Efoil Line" },
+    { href: "/#best-sellers", label: "Best Sellers" },
+    { href: "/#accessories", label: "Accessories" }
   ];
 
   function handleSubscribe(event: FormEvent<HTMLFormElement>) {
