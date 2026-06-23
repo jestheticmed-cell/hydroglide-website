@@ -77,7 +77,7 @@ export function Header({ lines }: HeaderProps) {
               </div>
             </div>
           </div>
-          <Link href="/#about-us" className={navLinkClass}>
+          <Link href="/about-us" className={navLinkClass}>
             About us
           </Link>
           <Link href="/contact" className={navLinkClass}>
@@ -143,7 +143,7 @@ export function Header({ lines }: HeaderProps) {
                 {item.label}
               </Link>
             ))}
-            <Link href="/#about-us" onClick={() => setOpen(false)} className={`mt-3 px-4 py-3 text-ink ${mobileNavTypeClass}`}>
+            <Link href="/about-us" onClick={() => setOpen(false)} className={`mt-3 px-4 py-3 text-ink ${mobileNavTypeClass}`}>
               About Us
             </Link>
             <Link href="/contact" onClick={() => setOpen(false)} className={`px-4 py-3 text-ink ${mobileNavTypeClass}`}>

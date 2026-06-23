@@ -1,20 +1,26 @@
 "use client";
 
-import { ArrowRight, Check } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { authProviders } from "@/lib/auth-providers";
 import { getSupabaseAuthClient } from "@/lib/supabase";
 
 export function LoginPanel() {
   const [email, setEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
   const [emailOptIn, setEmailOptIn] = useState(true);
   const [submitted, setSubmitted] = useState(false);
+  const [codeSubmitted, setCodeSubmitted] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [emailNotice, setEmailNotice] = useState("");
+  const [step, setStep] = useState<"email" | "code">("email");
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const showError = submitted && !email.trim();
   const nextPath = searchParams.get("next") || "/";
   const googleProvider = authProviders.google;
+  const showEmailError = submitted && !email.trim();
+  const showCodeError = codeSubmitted && verificationCode.trim().length < 6;
   const callbackError = searchParams.get("error");
   const callbackMessage =
     callbackError === "config"
@@ -24,6 +30,68 @@ export function LoginPanel() {
         : callbackError
           ? "Google sign-in was not completed. Please try again."
           : "";
+  const accountPath = `/account?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`;
+
+  async function requestEmailCode() {
+    setSubmitted(true);
+    setAuthError("");
+    setEmailNotice("");
+
+    if (!email.trim()) return;
+
+    setStep("code");
+    setEmailNotice("Sending verification code...");
+
+    const supabase = getSupabaseAuthClient();
+
+    if (!supabase) {
+      setEmailNotice("Preview mode: enter any 6-digit code to continue.");
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true
+      }
+    });
+
+    if (error) {
+      setEmailNotice("Preview mode: enter any 6-digit code to continue.");
+      setAuthError("Email verification could not be sent yet. You can continue in preview mode.");
+      return;
+    }
+
+    setEmailNotice("We sent a verification code to your email.");
+    setStep("code");
+  }
+
+  async function verifyEmailCode() {
+    setCodeSubmitted(true);
+    setAuthError("");
+
+    if (verificationCode.trim().length < 6) return;
+
+    const supabase = getSupabaseAuthClient();
+
+    if (!supabase) {
+      router.push(accountPath);
+      return;
+    }
+
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: verificationCode.trim(),
+      type: "email"
+    });
+
+    if (error) {
+      setAuthError("The verification code is incorrect or expired. Please try again.");
+      return;
+    }
+
+    router.push(accountPath);
+  }
 
   async function signInWithGoogle() {
     setAuthError("");
@@ -58,53 +126,116 @@ export function LoginPanel() {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        setSubmitted(true);
+        if (step === "email") {
+          requestEmailCode();
+          return;
+        }
+
+        verifyEmailCode();
       }}
     >
-      <button
-        type="button"
-        onClick={signInWithGoogle}
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line bg-white text-[16px] font-medium text-ink transition hover:border-[#078b8b] hover:bg-[#f4f6f6] focus:outline-none focus:ring-2 focus:ring-[#078b8b] focus:ring-offset-2 sm:h-14 sm:text-[18px]"
-      >
-        <GoogleIcon />
-        <span>Continue with Google</span>
-      </button>
+      {step === "email" ? (
+        <>
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line bg-white text-[16px] font-medium text-ink transition hover:border-[#078b8b] hover:bg-[#f4f6f6] focus:outline-none focus:ring-2 focus:ring-[#078b8b] focus:ring-offset-2 sm:h-14 sm:text-[18px]"
+          >
+            <GoogleIcon />
+            <span>Continue with Google</span>
+          </button>
 
-      <div className="my-5 grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-[16px] text-graphite sm:my-6 sm:gap-6 sm:text-[18px]">
-        <span className="h-px bg-line" />
-        <span>or</span>
-        <span className="h-px bg-line" />
-      </div>
+          <div className="my-5 grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-[16px] text-graphite sm:my-6 sm:gap-6 sm:text-[18px]">
+            <span className="h-px bg-line" />
+            <span>or</span>
+            <span className="h-px bg-line" />
+          </div>
 
-      <label className="block">
-        <span className="sr-only">Email</span>
-        <div
-          className={`flex h-14 items-center rounded-xl border bg-white px-4 transition sm:h-[62px] ${
-            showError ? "border-[#ef3f23]" : "border-line focus-within:border-[#078b8b]"
-          }`}
-        >
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="Email"
-            className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-graphite sm:text-[18px]"
-            aria-invalid={showError}
-          />
-          <button type="submit" className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] sm:h-11 sm:w-11" aria-label="Continue with email">
-            <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+          <label className="block">
+            <span className="sr-only">Email</span>
+            <div
+              className={`flex h-14 items-center rounded-xl border bg-white px-4 transition sm:h-[62px] ${
+                showEmailError ? "border-[#ef3f23]" : "border-line focus-within:border-[#078b8b]"
+              }`}
+            >
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Email"
+                className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-ink outline-none placeholder:text-graphite sm:text-[18px]"
+                aria-invalid={showEmailError}
+              />
+              <button
+                type="button"
+                onClick={requestEmailCode}
+                className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] sm:h-11 sm:w-11"
+                aria-label="Continue with email"
+              >
+                <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+              </button>
+            </div>
+            {showEmailError ? <span className="mt-2 block text-[16px] text-[#d94016]">Enter an email</span> : null}
+          </label>
+
+          <label className="mt-5 flex cursor-pointer items-center gap-3 text-[16px] text-ink sm:mt-6 sm:gap-4 sm:text-[18px]">
+            <input type="checkbox" checked={emailOptIn} onChange={(event) => setEmailOptIn(event.target.checked)} className="sr-only" />
+            <span className={`grid h-6 w-6 place-items-center rounded-md ${emailOptIn ? "bg-[#3bbab4] text-white" : "border border-line bg-white text-transparent"}`}>
+              <Check className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span>Email me with news and offers</span>
+          </label>
+        </>
+      ) : (
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              setStep("email");
+              setVerificationCode("");
+              setCodeSubmitted(false);
+              setAuthError("");
+            }}
+            className="mb-5 inline-flex items-center gap-2 text-[15px] text-graphite transition hover:text-[#078b8b]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Change email
+          </button>
+          <h2 className="text-[22px] font-semibold text-ink">Enter verification code</h2>
+          <p className="mt-2 text-[15px] leading-6 text-graphite">We sent a code to {email}.</p>
+
+          <label className="mt-5 block">
+            <span className="sr-only">Verification code</span>
+            <div
+              className={`flex h-14 items-center rounded-xl border bg-white px-4 transition sm:h-[62px] ${
+                showCodeError ? "border-[#ef3f23]" : "border-line focus-within:border-[#078b8b]"
+              }`}
+            >
+              <input
+                inputMode="numeric"
+                value={verificationCode}
+                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="Verification code"
+                className="h-full min-w-0 flex-1 bg-transparent text-[16px] tracking-[0.18em] text-ink outline-none placeholder:tracking-normal placeholder:text-graphite sm:text-[18px]"
+                aria-invalid={showCodeError}
+              />
+              <button
+                type="button"
+                onClick={verifyEmailCode}
+                className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] sm:h-11 sm:w-11"
+                aria-label="Verify email code"
+              >
+                <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+              </button>
+            </div>
+            {showCodeError ? <span className="mt-2 block text-[16px] text-[#d94016]">Enter the verification code</span> : null}
+          </label>
+
+          <button type="button" onClick={requestEmailCode} className="mt-5 text-[15px] text-[#078b8b] underline underline-offset-4 transition hover:text-ink">
+            Resend code
           </button>
         </div>
-        {showError ? <span className="mt-2 block text-[16px] text-[#d94016]">Enter an email</span> : null}
-      </label>
-
-      <label className="mt-5 flex cursor-pointer items-center gap-3 text-[16px] text-ink sm:mt-6 sm:gap-4 sm:text-[18px]">
-        <input type="checkbox" checked={emailOptIn} onChange={(event) => setEmailOptIn(event.target.checked)} className="sr-only" />
-        <span className={`grid h-6 w-6 place-items-center rounded-md ${emailOptIn ? "bg-[#3bbab4] text-white" : "border border-line bg-white text-transparent"}`}>
-          <Check className="h-4 w-4" aria-hidden="true" />
-        </span>
-        <span>Email me with news and offers</span>
-      </label>
+      )}
 
       <p className="mt-8 text-center text-[15px] leading-6 text-graphite">
         By continuing, you agree to our{" "}
@@ -113,6 +244,7 @@ export function LoginPanel() {
         </a>
       </p>
 
+      {emailNotice ? <p className="mt-4 text-center text-sm leading-6 text-graphite">{emailNotice}</p> : null}
       {authError || callbackMessage ? <p className="mt-5 text-center text-sm leading-6 text-charcoal">{authError || callbackMessage}</p> : null}
     </form>
   );

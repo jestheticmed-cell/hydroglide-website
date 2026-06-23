@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { CartDrawer } from "./CartDrawer";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
+import { LiveChatWidget } from "./LiveChatWidget";
 import type { ProductLine } from "@/lib/types";
 
 type AppChromeProps = {
@@ -14,7 +15,7 @@ type AppChromeProps = {
 
 export function AppChrome({ children, lines }: AppChromeProps) {
   const pathname = usePathname();
-  const isStandalonePage = pathname === "/checkout" || pathname === "/login" || pathname === "/auth/callback";
+  const isStandalonePage = pathname === "/checkout" || pathname === "/login" || pathname === "/auth/callback" || pathname === "/account";
 
   if (isStandalonePage) {
     return (
@@ -31,6 +32,7 @@ export function AppChrome({ children, lines }: AppChromeProps) {
       {children}
       <Footer />
       <CartDrawer />
+      <LiveChatWidget />
     </>
   );
 }

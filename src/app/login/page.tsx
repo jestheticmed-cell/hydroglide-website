@@ -21,7 +21,7 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <Link href="/privacy" className="mb-6 mt-auto pt-10 text-[16px] text-[#20aaa3] transition hover:text-[#078b8b] sm:text-[18px]">
+        <Link href="/privacy-policy" className="mb-6 mt-auto pt-10 text-[16px] text-[#20aaa3] transition hover:text-[#078b8b] sm:text-[18px]">
           Privacy policy
         </Link>
       </div>

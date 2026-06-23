@@ -9,6 +9,25 @@ type ContactErrors = {
   message?: string;
 };
 
+const countryCodeOptions = [
+  "United States +1",
+  "Canada +1",
+  "Australia +61",
+  "United Kingdom +44",
+  "China +86",
+  "Hong Kong +852",
+  "Singapore +65",
+  "New Zealand +64",
+  "Germany +49",
+  "France +33",
+  "Italy +39",
+  "Spain +34",
+  "Netherlands +31",
+  "United Arab Emirates +971",
+  "Japan +81",
+  "South Korea +82"
+];
+
 export function ContactForm() {
   const [errors, setErrors] = useState<ContactErrors>({});
 
@@ -50,11 +69,17 @@ export function ContactForm() {
       <div className="grid gap-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="relative block">
-            <select className="h-14 w-full appearance-none rounded-xl border border-line bg-white px-5 text-base tracking-[0.06em] text-ink outline-none focus:border-ink">
-              <option>United States +1</option>
-              <option>Canada +1</option>
-              <option>Australia +61</option>
-              <option>United Kingdom +44</option>
+            <select
+              name="countryCode"
+              aria-label="Country phone code"
+              defaultValue="United States +1"
+              className="h-14 w-full appearance-none rounded-xl border border-line bg-white px-5 pr-12 text-base tracking-[0.06em] text-ink outline-none transition focus:border-[#41b8ae]"
+            >
+              {countryCodeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#2f4b7c]" aria-hidden="true" />
           </label>
@@ -74,7 +99,7 @@ export function ContactForm() {
       </div>
 
       <div className="mt-16 text-center">
-        <button type="submit" className="h-14 min-w-[260px] rounded-full border border-line bg-white px-10 text-lg font-semibold tracking-[0.04em] text-ink transition hover:border-ink">
+        <button type="submit" className="h-14 min-w-[260px] rounded-full bg-[#41b8ae] px-10 text-lg font-semibold tracking-[0.04em] text-white transition hover:bg-[#36a9a0] focus:outline-none focus:ring-2 focus:ring-[#41b8ae] focus:ring-offset-2">
           Request contact
         </button>
       </div>

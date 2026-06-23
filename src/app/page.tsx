@@ -43,7 +43,8 @@ export default async function HomePage() {
         <LineShowcase lines={lines} productHrefByLineSlug={productHrefByLineSlug} productImageByLineSlug={productImageByLineSlug} />
       </section>
 
-      <section id="foils" className="border-y border-line bg-mist py-20 sm:py-28">
+      <section id="best-sellers" className="border-y border-line bg-mist py-20 sm:py-28">
+        <span id="foils" className="block scroll-mt-24" aria-hidden="true" />
         <div className="mx-auto grid max-w-7xl gap-6 px-5 sm:px-8 lg:grid-cols-[0.34fr_0.66fr] lg:items-center lg:gap-14 lg:px-10">
           <h2 className="whitespace-nowrap text-3xl font-semibold leading-tight text-ink sm:text-5xl">{homeContent.bestSellers.title}</h2>
           <p className="text-sm leading-7 text-graphite sm:text-base lg:whitespace-nowrap">

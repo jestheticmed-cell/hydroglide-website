@@ -13,13 +13,15 @@ export function Footer() {
     { href: "/contact", label: "Contact Us" },
     { href: "/#support", label: "After-Sales Support" },
     { href: "/shipping-delivery", label: "Shipping Guide" },
-    { href: "/#faq", label: "FAQ" },
-    { href: "/#manuals", label: "Product Manuals" }
+    { href: "/faq", label: "FAQ" },
+    { href: "/#manuals", label: "Product Manuals" },
+    { href: "/privacy-policy", label: "Privacy policy" },
+    { href: "/return-policy", label: "Return policy" }
   ];
   const productLinks = [
-    { href: "/#efoils", label: "Electric Hydrofoil Boards" },
-    { href: "/#foils", label: "Foil Boards" },
-    { href: "/#accessories", label: "Accessories" }
+    { href: "/#efoils", label: "EFOIL LINE" },
+    { href: "/#best-sellers", label: "BEST SELLERS" },
+    { href: "/#accessories", label: "ACCESSORIES" }
   ];
 
   function handleSubscribe(event: FormEvent<HTMLFormElement>) {
@@ -37,7 +39,7 @@ export function Footer() {
 
   return (
     <footer className={`border-t border-line bg-white text-ink ${footerTypeClass}`}>
-      <div className="relative grid gap-12 px-12 py-10 sm:px-20 lg:min-h-[285px] lg:grid-cols-[560px_1fr] lg:px-[120px] lg:py-12 xl:block xl:px-0">
+      <div className="relative grid gap-12 px-12 py-12 sm:px-20 lg:min-h-[360px] lg:grid-cols-[560px_1fr] lg:px-[120px] lg:py-14 xl:block xl:px-0">
         <div className="max-w-xl xl:ml-[120px]">
           <h2 className="text-[28px] font-normal leading-tight text-ink sm:text-[34px]">
             Get product updates and ride notes.
@@ -80,7 +82,7 @@ export function Footer() {
           </form>
         </div>
 
-        <div className="grid gap-10 sm:grid-cols-2 lg:gap-12 xl:absolute xl:left-[1080px] xl:top-12 xl:w-[560px]">
+        <div className="grid gap-10 sm:grid-cols-2 lg:gap-12 xl:absolute xl:left-[1080px] xl:top-10 xl:w-[560px]">
           <div>
             <h2 className="text-[21px] font-normal text-ink">Customer Service</h2>
             <nav className="mt-5 grid gap-3 text-[15px] font-normal text-graphite" aria-label="Customer service">
@@ -92,7 +94,7 @@ export function Footer() {
             </nav>
           </div>
 
-          <div>
+          <div id="accessories">
             <h2 className="text-[21px] font-normal text-ink">Product Quick Links</h2>
             <nav className="mt-5 grid gap-3 text-[15px] font-normal text-graphite" aria-label="Product quick links">
               {productLinks.map((link) => (
@@ -105,7 +107,7 @@ export function Footer() {
         </div>
       </div>
       <div className="flex items-center justify-between border-t border-line px-12 py-5 text-[14px] font-normal text-graphite sm:px-20 lg:px-[120px]">
-        <span>AeroLift</span>
+        <span>Hydroglide</span>
         <span>Premium outdoor hydrofoil systems</span>
       </div>
     </footer>
