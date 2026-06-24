@@ -183,7 +183,8 @@ function uid(prefix: string, seed: string) {
 }
 
 export function AdminConsole() {
-  const [token, setToken] = useState("");
+  const [draftToken, setDraftToken] = useState("");
+  const [adminToken, setAdminToken] = useState("");
   const [activeModule, setActiveModule] = useState<ModuleKey>("dashboard");
   const [activeProductSection, setActiveProductSection] = useState<ProductSectionKey>("products");
   const [activeModuleSubmenu, setActiveModuleSubmenu] = useState<Record<Exclude<ModuleKey, "products">, string>>({
@@ -209,28 +210,28 @@ export function AdminConsole() {
   const [supportLoading, setSupportLoading] = useState(false);
   const [supportReply, setSupportReply] = useState("");
 
-  const headers = useMemo(() => (token ? { "x-admin-token": token } : undefined), [token]);
+  const headers = useMemo(() => (adminToken ? { "x-admin-token": adminToken } : undefined), [adminToken]);
 
-  useEffect(() => {
-    const savedToken = window.localStorage.getItem("hydroglide_admin_token") ?? "";
-    setToken(savedToken);
-  }, []);
-
-  const loadData = useCallback(async (nextToken = token) => {
+  const loadData = useCallback(async (nextToken = "") => {
     setLoading(true);
     setError("");
     try {
       const response = await fetch("/api/admin/content", { headers: nextToken ? { "x-admin-token": nextToken } : undefined });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "后台数据读取失败");
+      setAdminToken(nextToken);
       setData(payload);
       setStatus(payload.message ?? "后台数据已加载");
+      return true;
     } catch (loadError) {
+      setData(null);
+      setAdminToken("");
       setError(loadError instanceof Error ? loadError.message : "后台数据读取失败");
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const loadSupportInbox = useCallback(async (conversationId?: string) => {
     setSupportLoading(true);
@@ -248,10 +249,18 @@ export function AdminConsole() {
   }, [headers]);
 
   useEffect(() => {
-    if (token || process.env.NODE_ENV !== "production") {
-      void loadData(token);
+    const savedToken = window.localStorage.getItem("hydroglide_admin_token") ?? "";
+    setDraftToken(savedToken);
+
+    if (savedToken) {
+      void loadData(savedToken);
+      return;
     }
-  }, [loadData, token]);
+
+    if (process.env.NODE_ENV !== "production") {
+      void loadData("");
+    }
+  }, [loadData]);
 
   useEffect(() => {
     if (activeModule === "support") {
@@ -281,7 +290,7 @@ export function AdminConsole() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "保存失败");
       setStatus(message);
-      await loadData();
+      await loadData(adminToken);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "保存失败");
     } finally {
@@ -334,10 +343,16 @@ export function AdminConsole() {
     }
   }
 
-  function login(event: FormEvent<HTMLFormElement>) {
+  async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    window.localStorage.setItem("hydroglide_admin_token", token);
-    void loadData(token);
+    const nextToken = draftToken.trim();
+    const ok = await loadData(nextToken);
+
+    if (ok) {
+      window.localStorage.setItem("hydroglide_admin_token", nextToken);
+    } else {
+      window.localStorage.removeItem("hydroglide_admin_token");
+    }
   }
 
   function updateHome(nextContent: HomeContent) {
@@ -394,7 +409,7 @@ export function AdminConsole() {
           </div>
           <label className={labelClass}>
             管理口令
-            <input className={inputClass} type="password" value={token} onChange={(event) => setToken(event.target.value)} />
+            <input className={inputClass} type="password" value={draftToken} onChange={(event) => setDraftToken(event.target.value)} />
           </label>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <button className={buttonClass} type="submit">进入后台</button>
@@ -417,7 +432,7 @@ export function AdminConsole() {
             <h1 className="mt-1 text-xl font-semibold">后台运营配置系统</h1>
           </div>
           <form onSubmit={login} className="flex min-w-0 gap-2">
-            <input className={`${inputClass} w-56`} type="password" placeholder="ADMIN_ACCESS_TOKEN" value={token} onChange={(event) => setToken(event.target.value)} />
+            <input className={`${inputClass} w-56`} type="password" placeholder="ADMIN_ACCESS_TOKEN" value={draftToken} onChange={(event) => setDraftToken(event.target.value)} />
             <button className={buttonClass} type="submit">验证</button>
           </form>
         </div>
