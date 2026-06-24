@@ -501,7 +501,7 @@ export function AdminConsole() {
           ) : null}
           {status ? <p className="mb-5 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{status}</p> : null}
           {error ? <p className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
-          {data?.configured === false ? <p className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">当前未配置 Supabase service role，只能预览，不能保存。</p> : null}
+          {data?.configured === false ? <p className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">当前后台处于降级预览模式。请检查 Vercel 环境变量和 Supabase 表结构，配置完成后即可正常保存真实数据。</p> : null}
 
           {activeModule === "dashboard" && data ? <DashboardPanel data={data} /> : null}
           {activeModule === "orders" ? <CenterPlaceholder title="订单管理中心" description="集中查看订单状态、支付、物流、售后与退款。订单数据表接入后，这里会成为订单履约工作台。" items={["待付款 / 待发货 / 已完成订单分组", "订单详情、收货信息、物流单号", "退款、换货、售后处理记录"]} /> : null}

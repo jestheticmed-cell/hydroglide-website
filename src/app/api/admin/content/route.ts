@@ -8,10 +8,86 @@ export const dynamic = "force-dynamic";
 
 const TABLES = new Set(["hero_slides", "product_lines", "products", "reviews"]);
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error && "message" in error) return String((error as { message?: unknown }).message);
+  return "Unknown error";
+}
+
+const fallbackHeroSlideRows = heroSlides.map((slide, index) => ({
+  id: slide.id,
+  image: slide.image,
+  eyebrow: slide.eyebrow,
+  title: slide.title,
+  copy: slide.copy,
+  sort_order: index,
+  is_active: true
+}));
+
+const fallbackProductLineRows = productLines.map((line) => ({
+  id: line.id,
+  slug: line.slug,
+  name: line.name,
+  eyebrow: line.eyebrow,
+  tagline: line.tagline,
+  description: line.description,
+  hero_images: line.heroImages,
+  sort_order: line.sortOrder,
+  is_active: true
+}));
+
+const fallbackProductRows = products.map((product) => ({
+  id: product.id,
+  slug: product.slug,
+  primary_category: "efoils",
+  line_slug: product.lineSlug,
+  name: product.name,
+  price_cents: product.priceCents,
+  currency: product.currency,
+  summary: product.summary,
+  description: product.description,
+  images: product.images,
+  color_options: product.colorOptions,
+  color_images: product.colorImages ?? {},
+  details: product.details,
+  detail_eyebrow: product.detailEyebrow ?? "Product Details",
+  detail_title: product.detailTitle ?? "Built for refined electric flight.",
+  comparison_eyebrow: product.comparisonEyebrow ?? "Series Comparison",
+  comparison_title: product.comparisonTitle ?? "Compare models in this series.",
+  specs: product.specs,
+  is_best_seller: product.isBestSeller,
+  sort_order: product.sortOrder,
+  status: "published"
+}));
+
+const fallbackReviewRows = reviews.map((review, index) => ({
+  id: review.id,
+  author_name: review.authorName,
+  location: review.location,
+  rating: review.rating,
+  body: review.body,
+  sort_order: index,
+  is_active: true
+}));
+
 async function readTable(supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>, table: string, orderColumn = "sort_order") {
   const { data, error } = await supabase.from(table).select("*").order(orderColumn);
   if (error) throw error;
   return data ?? [];
+}
+
+async function readTableOrFallback(
+  supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
+  table: string,
+  fallback: unknown[],
+  warnings: string[]
+) {
+  try {
+    return await readTable(supabase, table);
+  } catch (error) {
+    warnings.push(`${table}: ${getErrorMessage(error)}`);
+    return fallback;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -31,26 +107,31 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  try {
-    const [homeContentResult, heroSlideRows, lineRows, productRows, reviewRows] = await Promise.all([
-      supabase.from("site_content").select("content").eq("key", "home").maybeSingle(),
-      readTable(supabase, "hero_slides"),
-      readTable(supabase, "product_lines"),
-      readTable(supabase, "products"),
-      readTable(supabase, "reviews")
-    ]);
+  const warnings: string[] = [];
 
-    return NextResponse.json({
-      configured: true,
-      homeContent: homeContentResult.data?.content ?? fallbackHomeContent,
-      heroSlides: heroSlideRows,
-      productLines: lineRows,
-      products: productRows,
-      reviews: reviewRows
-    });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load admin content." }, { status: 500 });
+  const [homeContentResult, heroSlideRows, lineRows, productRows, reviewRows] = await Promise.all([
+    supabase.from("site_content").select("content").eq("key", "home").maybeSingle(),
+    readTableOrFallback(supabase, "hero_slides", fallbackHeroSlideRows, warnings),
+    readTableOrFallback(supabase, "product_lines", fallbackProductLineRows, warnings),
+    readTableOrFallback(supabase, "products", fallbackProductRows, warnings),
+    readTableOrFallback(supabase, "reviews", fallbackReviewRows, warnings)
+  ]);
+
+  if (homeContentResult.error) {
+    warnings.push(`site_content: ${getErrorMessage(homeContentResult.error)}`);
   }
+
+  return NextResponse.json({
+    configured: warnings.length === 0,
+    homeContent: homeContentResult.data?.content ?? fallbackHomeContent,
+    heroSlides: heroSlideRows,
+    productLines: lineRows,
+    products: productRows,
+    reviews: reviewRows,
+    message: warnings.length
+      ? `后台已进入降级模式，请检查 Supabase 表结构：${warnings.join("；")}`
+      : "后台数据已加载"
+  });
 }
 
 export async function POST(request: NextRequest) {
