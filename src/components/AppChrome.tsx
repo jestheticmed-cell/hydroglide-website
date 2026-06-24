@@ -15,13 +15,18 @@ type AppChromeProps = {
 
 export function AppChrome({ children, lines }: AppChromeProps) {
   const pathname = usePathname();
-  const isStandalonePage = pathname === "/checkout" || pathname === "/login" || pathname === "/auth/callback" || pathname === "/account";
+  const isStandalonePage =
+    pathname === "/checkout" ||
+    pathname === "/login" ||
+    pathname === "/auth/callback" ||
+    pathname === "/account" ||
+    pathname?.startsWith("/admin");
 
   if (isStandalonePage) {
     return (
       <>
         {children}
-        <CartDrawer />
+        {pathname?.startsWith("/admin") ? null : <CartDrawer />}
       </>
     );
   }

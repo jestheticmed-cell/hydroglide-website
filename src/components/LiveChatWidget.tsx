@@ -1,7 +1,7 @@
 "use client";
 
 import { MessageCircle, Send, UserRound, X } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 const instantAnswers = {
   "What is your return policy?": "We offer a 30-day return and exchange policy for unused items in original condition. Please contact customer service before sending anything back.",
@@ -13,36 +13,121 @@ const instantAnswers = {
 };
 
 type ChatMessage = {
-  id: number;
+  id: string;
   role: "user" | "support";
   text: string;
+};
+
+type ApiSupportMessage = {
+  id: string;
+  sender: "user" | "support" | "system";
+  body: string;
 };
 
 export function LiveChatWidget() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversationId, setConversationId] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
   const toggleChat = () => setOpen((value) => !value);
   const hasMessages = messages.length > 0;
+
+  useEffect(() => {
+    const savedConversationId = window.localStorage.getItem("hydroglide_support_conversation") ?? "";
+    if (savedConversationId) setConversationId(savedConversationId);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !conversationId) return;
+
+    let cancelled = false;
+
+    async function loadMessages() {
+      try {
+        const response = await fetch(`/api/support/messages?conversationId=${encodeURIComponent(conversationId)}`);
+        const payload = await response.json();
+        if (!response.ok || cancelled || !payload.messages) return;
+        setMessages(mapApiMessages(payload.messages));
+      } catch {
+        // Keep the chat usable when support polling is temporarily unavailable.
+      }
+    }
+
+    void loadMessages();
+    const timer = window.setInterval(loadMessages, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [conversationId, open]);
+
+  function mapApiMessages(items: ApiSupportMessage[]): ChatMessage[] {
+    return items.map((item) => ({
+      id: item.id,
+      role: item.sender === "user" ? "user" : "support",
+      text: item.body
+    }));
+  }
 
   function addExchange(question: string, answer?: string) {
     const supportAnswer = answer ?? "Thanks for your message. Our support team will reply soon. You can also email us at hydroglide@gmail.com.";
 
     setMessages((current) => [
       ...current,
-      { id: Date.now(), role: "user", text: question },
-      { id: Date.now() + 1, role: "support", text: supportAnswer }
+      { id: String(Date.now()), role: "user", text: question },
+      { id: String(Date.now() + 1), role: "support", text: supportAnswer }
     ]);
   }
 
-  function handleSend(event?: FormEvent<HTMLFormElement>) {
+  async function handleSend(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     const trimmed = message.trim();
 
     if (!trimmed) return;
 
-    addExchange(trimmed);
+    setSending(true);
+    setSendError("");
+    setMessages((current) => [...current, { id: `local-${Date.now()}`, role: "user", text: trimmed }]);
     setMessage("");
+
+    try {
+      const response = await fetch("/api/support/messages", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          conversationId: conversationId || undefined,
+          message: trimmed,
+          subject: trimmed.slice(0, 80)
+        })
+      });
+      const payload = await response.json();
+
+      if (!response.ok) throw new Error(payload.error ?? "Message failed to send.");
+
+      if (payload.conversationId) {
+        setConversationId(payload.conversationId);
+        window.localStorage.setItem("hydroglide_support_conversation", payload.conversationId);
+      }
+
+      if (payload.messages) {
+        setMessages(mapApiMessages(payload.messages));
+      }
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : "Message failed to send. Please email hydroglide@gmail.com.");
+      setMessages((current) => [
+        ...current,
+        {
+          id: `support-error-${Date.now()}`,
+          role: "support",
+          text: "We could not send this message to support right now. Please email hydroglide@gmail.com."
+        }
+      ]);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -69,9 +154,10 @@ export function LiveChatWidget() {
                 placeholder="Write message"
               />
               <button type="submit" className="grid h-10 w-10 place-items-center text-[#c8c8c8] transition hover:text-[#41b8ae]" aria-label="Send message">
-                <Send className="h-6 w-6" aria-hidden="true" />
+                <Send className={`h-6 w-6 ${sending ? "opacity-50" : ""}`} aria-hidden="true" />
               </button>
             </form>
+            {sendError ? <p className="mt-2 text-sm leading-5 text-red-600">{sendError}</p> : null}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-6">

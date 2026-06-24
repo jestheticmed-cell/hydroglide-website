@@ -2,9 +2,12 @@ import { HeroCarousel } from "@/components/HeroCarousel";
 import { LineShowcase } from "@/components/LineShowcase";
 import { ProductCard } from "@/components/ProductCard";
 import { getHeroSlides, getProduct, getProductLines, getReviews } from "@/lib/data";
-import { homeContent } from "@/lib/site-content";
+import { getHomeContent } from "@/lib/site-content";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const homeContent = await getHomeContent();
   const featuredLineProductSlugs = Object.entries(homeContent.productLines.featuredProductSlugs);
   const [slides, lines, selectedBestSellers, selectedLineProducts, reviews] = await Promise.all([
     getHeroSlides(),

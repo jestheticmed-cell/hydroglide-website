@@ -1,0 +1,971 @@
+"use client";
+
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
+import type { HomeContent } from "@/lib/site-content";
+
+type HeroSlideRow = {
+  id: string;
+  image: string;
+  eyebrow: string;
+  title: string;
+  copy: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+type ProductLineRow = {
+  id: string;
+  slug: "lift-5f" | "lift-5" | "lift-x";
+  name: string;
+  eyebrow: string;
+  tagline: string;
+  description: string;
+  hero_images: string[];
+  sort_order: number;
+  is_active: boolean;
+};
+
+type ProductRow = {
+  id: string;
+  slug: string;
+  primary_category: "efoils" | "foils";
+  line_slug: "lift-5f" | "lift-5" | "lift-x";
+  name: string;
+  price_cents: number;
+  currency: "USD";
+  summary: string;
+  description: string;
+  images: string[];
+  color_options: string[];
+  color_images: Record<string, string[]>;
+  details: string[];
+  detail_eyebrow: string;
+  detail_title: string;
+  comparison_eyebrow: string;
+  comparison_title: string;
+  specs: Record<string, string>;
+  is_best_seller: boolean;
+  sort_order: number;
+  status: "draft" | "published";
+};
+
+type ReviewRow = {
+  id: string;
+  author_name: string;
+  location: string;
+  rating: number;
+  body: string;
+  sort_order: number;
+  is_active: boolean;
+};
+
+type SupportConversationRow = {
+  id: string;
+  customer_name: string;
+  customer_email: string | null;
+  subject: string;
+  status: "open" | "pending" | "archived";
+  unread_count: number;
+  last_message: string;
+  last_message_at: string;
+  created_at: string;
+};
+
+type SupportMessageRow = {
+  id: string;
+  conversation_id: string;
+  sender: "user" | "support" | "system";
+  body: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+type SupportInboxData = {
+  configured: boolean;
+  conversations: SupportConversationRow[];
+  selectedConversationId: string | null;
+  messages: SupportMessageRow[];
+};
+
+type AdminData = {
+  configured: boolean;
+  message?: string;
+  homeContent: HomeContent;
+  heroSlides: HeroSlideRow[];
+  productLines: ProductLineRow[];
+  products: ProductRow[];
+  reviews: ReviewRow[];
+};
+
+type ModuleKey = "dashboard" | "products" | "orders" | "customers" | "marketing" | "support";
+type ProductSectionKey = "products" | "lines" | "home" | "slides" | "reviews" | "media";
+
+const modules: Array<{ key: ModuleKey; label: string; description: string; icon: typeof BarChart3 }> = [
+  { key: "dashboard", label: "仪表盘", description: "数据看板", icon: BarChart3 },
+  { key: "products", label: "商品中心", description: "商品、图片、页面配置", icon: Boxes },
+  { key: "orders", label: "订单管理中心", description: "订单履约与售后", icon: ClipboardList },
+  { key: "customers", label: "客户/会员管理", description: "会员档案与分层", icon: Users },
+  { key: "marketing", label: "营销推广", description: "活动、优惠与转化", icon: Megaphone },
+  { key: "support", label: "客服消息", description: "消息、回复、存档", icon: MessageSquareText }
+];
+
+const productSections: Array<{ key: ProductSectionKey; label: string }> = [
+  { key: "products", label: "商品管理" },
+  { key: "lines", label: "产品系列" },
+  { key: "home", label: "首页文案" },
+  { key: "slides", label: "轮播图" },
+  { key: "reviews", label: "评价" },
+  { key: "media", label: "图片上传" }
+];
+
+const moduleSubmenus: Record<Exclude<ModuleKey, "products">, Array<{ key: string; label: string }>> = {
+  dashboard: [
+    { key: "overview", label: "运营总览" },
+    { key: "tasks", label: "待办提醒" }
+  ],
+  orders: [
+    { key: "all", label: "全部订单" },
+    { key: "shipping", label: "待发货" },
+    { key: "after-sales", label: "售后/退款" }
+  ],
+  customers: [
+    { key: "members", label: "会员列表" },
+    { key: "segments", label: "客户分群" },
+    { key: "service", label: "服务记录" }
+  ],
+  marketing: [
+    { key: "campaigns", label: "活动管理" },
+    { key: "coupons", label: "优惠券" },
+    { key: "materials", label: "推广素材" }
+  ],
+  support: [
+    { key: "messages", label: "消息列表" },
+    { key: "unread", label: "未读提醒" },
+    { key: "quick-reply", label: "一键回复" },
+    { key: "archive", label: "历史对话存档" }
+  ]
+};
+
+const inputClass = "w-full border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#078b8b] focus:ring-2 focus:ring-[#078b8b]/20";
+const labelClass = "grid gap-2 text-sm font-medium text-slate-700";
+const buttonClass = "inline-flex items-center justify-center gap-2 bg-[#078b8b] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#056f6f] disabled:cursor-not-allowed disabled:opacity-60";
+
+function linesToArray(value: string) {
+  return value.split("\n").map((item) => item.trim()).filter(Boolean);
+}
+
+function arrayToLines(value?: string[]) {
+  return (value ?? []).join("\n");
+}
+
+function specsToText(value?: Record<string, string>) {
+  return Object.entries(value ?? {}).map(([key, item]) => `${key}: ${item}`).join("\n");
+}
+
+function textToSpecs(value: string) {
+  return Object.fromEntries(
+    value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [key, ...rest] = line.split(":");
+        return [key.trim(), rest.join(":").trim()];
+      })
+      .filter(([key, item]) => key && item)
+  );
+}
+
+function uid(prefix: string, seed: string) {
+  const slug = seed.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return `${prefix}-${slug || Date.now()}`;
+}
+
+export function AdminConsole() {
+  const [token, setToken] = useState("");
+  const [activeModule, setActiveModule] = useState<ModuleKey>("dashboard");
+  const [activeProductSection, setActiveProductSection] = useState<ProductSectionKey>("products");
+  const [activeModuleSubmenu, setActiveModuleSubmenu] = useState<Record<Exclude<ModuleKey, "products">, string>>({
+    dashboard: "overview",
+    orders: "all",
+    customers: "members",
+    marketing: "campaigns",
+    support: "messages"
+  });
+  const [data, setData] = useState<AdminData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState({ slides: 0, lines: 0, products: 0, reviews: 0 });
+  const [uploadUrl, setUploadUrl] = useState("");
+  const [supportInbox, setSupportInbox] = useState<SupportInboxData>({
+    configured: false,
+    conversations: [],
+    selectedConversationId: null,
+    messages: []
+  });
+  const [supportLoading, setSupportLoading] = useState(false);
+  const [supportReply, setSupportReply] = useState("");
+
+  const headers = useMemo(() => (token ? { "x-admin-token": token } : undefined), [token]);
+
+  useEffect(() => {
+    const savedToken = window.localStorage.getItem("hydroglide_admin_token") ?? "";
+    setToken(savedToken);
+  }, []);
+
+  const loadData = useCallback(async (nextToken = token) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/content", { headers: nextToken ? { "x-admin-token": nextToken } : undefined });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "后台数据读取失败");
+      setData(payload);
+      setStatus(payload.message ?? "后台数据已加载");
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "后台数据读取失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const loadSupportInbox = useCallback(async (conversationId?: string) => {
+    setSupportLoading(true);
+    try {
+      const suffix = conversationId ? `?conversationId=${encodeURIComponent(conversationId)}` : "";
+      const response = await fetch(`/api/admin/support${suffix}`, { headers });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "客服消息读取失败");
+      setSupportInbox(payload);
+    } catch (supportError) {
+      setError(supportError instanceof Error ? supportError.message : "客服消息读取失败");
+    } finally {
+      setSupportLoading(false);
+    }
+  }, [headers]);
+
+  useEffect(() => {
+    if (token || process.env.NODE_ENV !== "production") {
+      void loadData(token);
+    }
+  }, [loadData, token]);
+
+  useEffect(() => {
+    if (activeModule === "support") {
+      void loadSupportInbox(supportInbox.selectedConversationId ?? undefined);
+    }
+  }, [activeModule, loadSupportInbox, supportInbox.selectedConversationId]);
+
+  async function saveHome() {
+    if (!data) return;
+    await savePayload({ content: data.homeContent }, "首页文案已保存");
+  }
+
+  async function saveRecord(table: string, record: Record<string, unknown>, message: string) {
+    await savePayload({ table, record }, message);
+  }
+
+  async function savePayload(payload: Record<string, unknown>, message: string) {
+    setSaving(true);
+    setStatus("");
+    setError("");
+    try {
+      const response = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(headers ?? {}) },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "保存失败");
+      setStatus(message);
+      await loadData();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function uploadImage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const file = new FormData(event.currentTarget).get("file");
+    if (!(file instanceof File) || !file.name) return;
+
+    setSaving(true);
+    setError("");
+    setUploadUrl("");
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const response = await fetch("/api/admin/upload", { method: "POST", headers, body });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "图片上传失败");
+      setUploadUrl(result.url);
+      setStatus("图片已上传，可复制链接到图片字段");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "图片上传失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateSupportInbox(action: "reply" | "mark_read" | "archive" | "reopen", conversationId: string, message?: string) {
+    setSupportLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/admin/support", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...(headers ?? {}) },
+        body: JSON.stringify({ action, conversationId, message })
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "客服消息更新失败");
+      setSupportInbox(payload);
+      if (action === "reply") setSupportReply("");
+      setStatus(action === "reply" ? "客服回复已发送" : "客服消息状态已更新");
+    } catch (supportError) {
+      setError(supportError instanceof Error ? supportError.message : "客服消息更新失败");
+    } finally {
+      setSupportLoading(false);
+    }
+  }
+
+  function login(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    window.localStorage.setItem("hydroglide_admin_token", token);
+    void loadData(token);
+  }
+
+  function updateHome(nextContent: HomeContent) {
+    setData((current) => (current ? { ...current, homeContent: nextContent } : current));
+  }
+
+  function updateCollection<K extends "heroSlides" | "productLines" | "products" | "reviews">(key: K, index: number, value: AdminData[K][number]) {
+    setData((current) => {
+      if (!current) return current;
+      const nextItems = [...current[key]] as AdminData[K];
+      nextItems[index] = value as never;
+      return { ...current, [key]: nextItems };
+    });
+  }
+
+  function addProduct() {
+    const product: ProductRow = {
+      id: `prod-${Date.now()}`,
+      slug: `new-product-${Date.now()}`,
+      primary_category: "efoils",
+      line_slug: "lift-5f",
+      name: "New Product",
+      price_cents: 0,
+      currency: "USD",
+      summary: "",
+      description: "",
+      images: [],
+      color_options: [],
+      color_images: {},
+      details: [],
+      detail_eyebrow: "Product Details",
+      detail_title: "Built for refined electric flight.",
+      comparison_eyebrow: "Series Comparison",
+      comparison_title: "Compare models in this series.",
+      specs: {},
+      is_best_seller: false,
+      sort_order: data?.products.length ?? 0,
+      status: "draft"
+    };
+    setData((current) => (current ? { ...current, products: [...current.products, product] } : current));
+    setSelected((current) => ({ ...current, products: data?.products.length ?? 0 }));
+    setActiveModule("products");
+    setActiveProductSection("products");
+  }
+
+  if (!data && !loading) {
+    return (
+      <main className="min-h-screen bg-slate-950 px-5 py-10 text-white">
+        <form onSubmit={login} className="mx-auto mt-24 grid max-w-md gap-5 bg-white p-8 text-slate-900 shadow-2xl">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#078b8b]">Hydroglide Admin</p>
+            <h1 className="mt-3 text-3xl font-semibold">后台运营配置</h1>
+            <p className="mt-3 text-sm leading-6 text-slate-600">输入部署环境中的 ADMIN_ACCESS_TOKEN 后进入后台。</p>
+          </div>
+          <label className={labelClass}>
+            管理口令
+            <input className={inputClass} type="password" value={token} onChange={(event) => setToken(event.target.value)} />
+          </label>
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <button className={buttonClass} type="submit">进入后台</button>
+        </form>
+      </main>
+    );
+  }
+
+  const slide = data?.heroSlides[selected.slides];
+  const line = data?.productLines[selected.lines];
+  const product = data?.products[selected.products];
+  const review = data?.reviews[selected.reviews];
+
+  return (
+    <main className="min-h-screen bg-slate-100 text-slate-950">
+      <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#078b8b]">Hydroglide Admin</p>
+            <h1 className="mt-1 text-xl font-semibold">后台运营配置系统</h1>
+          </div>
+          <form onSubmit={login} className="flex min-w-0 gap-2">
+            <input className={`${inputClass} w-56`} type="password" placeholder="ADMIN_ACCESS_TOKEN" value={token} onChange={(event) => setToken(event.target.value)} />
+            <button className={buttonClass} type="submit">验证</button>
+          </form>
+        </div>
+      </div>
+
+      <div className="grid gap-3 px-3 py-3 sm:px-4 lg:grid-cols-[260px_1fr]">
+        <aside className="h-fit bg-white p-2 shadow-sm">
+          <nav className="grid gap-1">
+            {modules.map((module) => {
+              const Icon = module.icon;
+              const submenu = module.key === "products" ? productSections : moduleSubmenus[module.key];
+              return (
+                <div key={module.key} className="grid gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveModule(module.key)}
+                    className={`flex items-start gap-3 px-3 py-2.5 text-left transition ${activeModule === module.key ? "bg-[#078b8b] text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      <span className="block text-sm font-semibold">{module.label}</span>
+                      <span className={`mt-0.5 block text-xs ${activeModule === module.key ? "text-white/80" : "text-slate-500"}`}>{module.description}</span>
+                    </span>
+                  </button>
+                  {activeModule === module.key ? (
+                    <div className="ml-5 border-l border-slate-200 py-1 pl-2">
+                      {submenu.map((item) => {
+                        const activeChild =
+                          module.key === "products"
+                            ? activeProductSection === item.key
+                            : activeModuleSubmenu[module.key] === item.key;
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => {
+                              setActiveModule(module.key);
+                              if (module.key === "products") {
+                                setActiveProductSection(item.key as ProductSectionKey);
+                              } else {
+                                setActiveModuleSubmenu((current) => ({ ...current, [module.key]: item.key }));
+                              }
+                            }}
+                            className={`block w-full px-3 py-2 text-left text-sm transition ${
+                              activeChild ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                            }`}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </nav>
+          <button type="button" onClick={addProduct} className="mt-3 inline-flex w-full items-center justify-center gap-2 border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+            <Plus className="h-4 w-4" /> 新增产品
+          </button>
+        </aside>
+
+        <section className="min-w-0 bg-white p-4 shadow-sm">
+          {loading ? (
+            <div className="flex items-center gap-3 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" /> 正在加载后台数据...</div>
+          ) : null}
+          {status ? <p className="mb-5 border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{status}</p> : null}
+          {error ? <p className="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+          {data?.configured === false ? <p className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">当前未配置 Supabase service role，只能预览，不能保存。</p> : null}
+
+          {activeModule === "dashboard" && data ? <DashboardPanel data={data} /> : null}
+          {activeModule === "orders" ? <CenterPlaceholder title="订单管理中心" description="集中查看订单状态、支付、物流、售后与退款。订单数据表接入后，这里会成为订单履约工作台。" items={["待付款 / 待发货 / 已完成订单分组", "订单详情、收货信息、物流单号", "退款、换货、售后处理记录"]} /> : null}
+          {activeModule === "customers" ? <CenterPlaceholder title="客户/会员管理" description="沉淀客户资料、会员等级、购买记录和服务跟进。会员数据接入后可用于精细化运营。" items={["客户列表与会员等级", "购买次数、累计消费、最近活跃", "标签分群、备注、服务记录"]} /> : null}
+          {activeModule === "marketing" ? <CenterPlaceholder title="营销推广" description="管理优惠活动、首页推荐、邮件订阅和投放素材。后续可接入优惠码、活动页和转化数据。" items={["优惠券、满减、限时活动", "首页推荐位和热卖组合", "订阅用户、EDM、广告素材"]} /> : null}
+          {activeModule === "support" ? (
+            <SupportMessagesPanel
+              activeSection={activeModuleSubmenu.support}
+              inbox={supportInbox}
+              loading={supportLoading}
+              reply={supportReply}
+              onReplyChange={setSupportReply}
+              onSelectConversation={(conversationId) => void loadSupportInbox(conversationId)}
+              onMarkRead={(conversationId) => void updateSupportInbox("mark_read", conversationId)}
+              onArchive={(conversationId) => void updateSupportInbox("archive", conversationId)}
+              onReopen={(conversationId) => void updateSupportInbox("reopen", conversationId)}
+              onSendReply={(conversationId) => void updateSupportInbox("reply", conversationId, supportReply)}
+            />
+          ) : null}
+
+          {activeModule === "products" ? (
+            <div className="mb-4">
+              <SectionTitle title="商品中心" />
+              <p className="mt-2 text-sm text-slate-500">通过左侧子菜单管理商品、系列、首页内容和素材。</p>
+            </div>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "home" && data ? (
+            <div className="grid gap-5">
+              <SectionTitle title="首页文案与推荐产品" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className={labelClass}>首页视频地址<input className={inputClass} value={data.homeContent.hero.videoSrc} onChange={(event) => updateHome({ ...data.homeContent, hero: { ...data.homeContent.hero, videoSrc: event.target.value } })} /></label>
+                <label className={labelClass}>Hero 标题<input className={inputClass} value={data.homeContent.hero.title} onChange={(event) => updateHome({ ...data.homeContent, hero: { ...data.homeContent.hero, title: event.target.value } })} /></label>
+              </div>
+              <label className={labelClass}>Hero 文案<textarea className={inputClass} rows={3} value={data.homeContent.hero.copy} onChange={(event) => updateHome({ ...data.homeContent, hero: { ...data.homeContent.hero, copy: event.target.value } })} /></label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <TextBlock label="产品系列标题" value={data.homeContent.productLines.title} onChange={(value) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, title: value } })} />
+                <TextBlock label="热卖标题" value={data.homeContent.bestSellers.title} onChange={(value) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, title: value } })} />
+              </div>
+              <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
+              <label className={labelClass}>热卖产品 Slug（每行一个）<textarea className={inputClass} rows={4} value={arrayToLines(data.homeContent.bestSellers.productSlugs)} onChange={(event) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, productSlugs: linesToArray(event.target.value) } })} /></label>
+              <button type="button" disabled={saving} onClick={saveHome} className={buttonClass}><Save className="h-4 w-4" /> 保存首页文案</button>
+            </div>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "slides" && slide ? (
+            <RecordEditor items={data?.heroSlides ?? []} selected={selected.slides} labelKey="title" onSelect={(index) => setSelected((current) => ({ ...current, slides: index }))}>
+              <div className="grid gap-4">
+                <TextBlock label="图片 URL" value={slide.image} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, image: value })} />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <TextBlock label="眉标" value={slide.eyebrow} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, eyebrow: value })} />
+                  <TextBlock label="标题" value={slide.title} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, title: value })} />
+                </div>
+                <label className={labelClass}>文案<textarea className={inputClass} rows={4} value={slide.copy} onChange={(event) => updateCollection("heroSlides", selected.slides, { ...slide, copy: event.target.value })} /></label>
+                <ToggleRow active={slide.is_active} order={slide.sort_order} onActive={(value) => updateCollection("heroSlides", selected.slides, { ...slide, is_active: value })} onOrder={(value) => updateCollection("heroSlides", selected.slides, { ...slide, sort_order: value })} />
+                <button type="button" disabled={saving} onClick={() => saveRecord("hero_slides", slide, "轮播图已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存轮播图</button>
+              </div>
+            </RecordEditor>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "lines" && line ? (
+            <RecordEditor items={data?.productLines ?? []} selected={selected.lines} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, lines: index }))}>
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <TextBlock label="系列名" value={line.name} onChange={(value) => updateCollection("productLines", selected.lines, { ...line, name: value })} />
+                  <TextBlock label="眉标" value={line.eyebrow} onChange={(value) => updateCollection("productLines", selected.lines, { ...line, eyebrow: value })} />
+                  <TextBlock label="标语" value={line.tagline} onChange={(value) => updateCollection("productLines", selected.lines, { ...line, tagline: value })} />
+                </div>
+                <label className={labelClass}>描述<textarea className={inputClass} rows={4} value={line.description} onChange={(event) => updateCollection("productLines", selected.lines, { ...line, description: event.target.value })} /></label>
+                <label className={labelClass}>系列图片 URL（每行一个）<textarea className={inputClass} rows={4} value={arrayToLines(line.hero_images)} onChange={(event) => updateCollection("productLines", selected.lines, { ...line, hero_images: linesToArray(event.target.value) })} /></label>
+                <ToggleRow active={line.is_active} order={line.sort_order} onActive={(value) => updateCollection("productLines", selected.lines, { ...line, is_active: value })} onOrder={(value) => updateCollection("productLines", selected.lines, { ...line, sort_order: value })} />
+                <button type="button" disabled={saving} onClick={() => saveRecord("product_lines", line, "产品系列已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存产品系列</button>
+              </div>
+            </RecordEditor>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "products" && product ? (
+            <RecordEditor items={data?.products ?? []} selected={selected.products} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, products: index }))}>
+              <ProductForm product={product} saving={saving} update={(next) => updateCollection("products", selected.products, next)} save={() => saveRecord("products", product, "产品已保存")} />
+            </RecordEditor>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "reviews" && review ? (
+            <RecordEditor items={data?.reviews ?? []} selected={selected.reviews} labelKey="author_name" onSelect={(index) => setSelected((current) => ({ ...current, reviews: index }))}>
+              <div className="grid gap-4">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <TextBlock label="姓名" value={review.author_name} onChange={(value) => updateCollection("reviews", selected.reviews, { ...review, author_name: value })} />
+                  <TextBlock label="地区" value={review.location} onChange={(value) => updateCollection("reviews", selected.reviews, { ...review, location: value })} />
+                  <label className={labelClass}>评分<input className={inputClass} type="number" min={1} max={5} value={review.rating} onChange={(event) => updateCollection("reviews", selected.reviews, { ...review, rating: Number(event.target.value) })} /></label>
+                </div>
+                <label className={labelClass}>评价内容<textarea className={inputClass} rows={4} value={review.body} onChange={(event) => updateCollection("reviews", selected.reviews, { ...review, body: event.target.value })} /></label>
+                <ToggleRow active={review.is_active} order={review.sort_order} onActive={(value) => updateCollection("reviews", selected.reviews, { ...review, is_active: value })} onOrder={(value) => updateCollection("reviews", selected.reviews, { ...review, sort_order: value })} />
+                <button type="button" disabled={saving} onClick={() => saveRecord("reviews", review, "评价已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存评价</button>
+              </div>
+            </RecordEditor>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "media" ? (
+            <div className="grid gap-5">
+              <SectionTitle title="图片上传" />
+              <form onSubmit={uploadImage} className="grid gap-4 border border-dashed border-slate-300 p-6">
+                <ImagePlus className="h-8 w-8 text-[#078b8b]" />
+                <label className={labelClass}>选择网页图片<input className={inputClass} name="file" type="file" accept="image/*" /></label>
+                <button type="submit" disabled={saving} className={buttonClass}><UploadCloud className="h-4 w-4" /> 上传到素材库</button>
+              </form>
+              {uploadUrl ? (
+                <label className={labelClass}>上传后的公开 URL<input className={inputClass} readOnly value={uploadUrl} onFocus={(event) => event.currentTarget.select()} /></label>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function DashboardPanel({ data }: { data: AdminData }) {
+  const publishedProducts = data.products.filter((product) => product.status === "published").length;
+  const draftProducts = data.products.filter((product) => product.status === "draft").length;
+  const activeSlides = data.heroSlides.filter((slide) => slide.is_active).length;
+  const activeReviews = data.reviews.filter((review) => review.is_active).length;
+  const cards = [
+    { label: "商品总数", value: data.products.length, note: `${publishedProducts} 个已发布，${draftProducts} 个草稿` },
+    { label: "产品系列", value: data.productLines.length, note: "前台 Efoils 系列导航数据" },
+    { label: "轮播图", value: data.heroSlides.length, note: `${activeSlides} 张正在前台展示` },
+    { label: "客户评价", value: data.reviews.length, note: `${activeReviews} 条已启用` }
+  ];
+
+  return (
+    <div className="grid gap-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#078b8b]">Dashboard</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-950">仪表盘</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">快速查看当前网站运营配置状态。订单、客户和营销数据接入后会继续扩展到这里。</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <article key={card.label} className="border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm font-medium text-slate-500">{card.label}</p>
+            <strong className="mt-3 block text-3xl font-semibold text-slate-950">{card.value}</strong>
+            <p className="mt-3 text-sm leading-5 text-slate-600">{card.note}</p>
+          </article>
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <article className="border border-slate-200 p-5">
+          <h3 className="text-base font-semibold text-slate-950">待办提醒</h3>
+          <div className="mt-4 grid gap-3 text-sm text-slate-600">
+            <p>检查草稿商品：{draftProducts} 个商品尚未发布。</p>
+            <p>维护首页内容：可在商品中心的首页文案、轮播图中更新前台展示。</p>
+            <p>上传新素材：商品中心的图片上传可生成公开图片链接。</p>
+          </div>
+        </article>
+        <article className="border border-slate-200 p-5">
+          <h3 className="text-base font-semibold text-slate-950">快捷入口</h3>
+          <div className="mt-4 grid gap-3 text-sm text-slate-600">
+            <p>商品中心：维护产品、系列、图片、首页内容。</p>
+            <p>订单管理中心：预留订单履约工作流。</p>
+            <p>客户/会员管理：预留客户分层和会员运营。</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  );
+}
+
+function CenterPlaceholder({ title, description, items }: { title: string; description: string; items: string[] }) {
+  return (
+    <div className="grid gap-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#078b8b]">Operations</p>
+        <h2 className="mt-2 text-2xl font-semibold text-slate-950">{title}</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
+      </div>
+      <div className="border border-dashed border-slate-300 bg-slate-50 p-6">
+        <p className="text-sm font-semibold text-slate-900">规划功能</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {items.map((item) => (
+            <div key={item} className="border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SupportMessagesPanel({
+  activeSection,
+  inbox,
+  loading,
+  reply,
+  onReplyChange,
+  onSelectConversation,
+  onMarkRead,
+  onArchive,
+  onReopen,
+  onSendReply
+}: {
+  activeSection: string;
+  inbox: SupportInboxData;
+  loading: boolean;
+  reply: string;
+  onReplyChange: (value: string) => void;
+  onSelectConversation: (conversationId: string) => void;
+  onMarkRead: (conversationId: string) => void;
+  onArchive: (conversationId: string) => void;
+  onReopen: (conversationId: string) => void;
+  onSendReply: (conversationId: string) => void;
+}) {
+  const quickReplies = [
+    "您好，感谢咨询。我们已收到您的问题，客服会尽快为您确认具体方案。",
+    "Lift 5F Cruiser 官方续航最高约 120 分钟，实际时间会受体重、水况和速度影响。",
+    "请提供订单号、购买邮箱和问题图片，我们会为您创建售后工单。"
+  ];
+  const unreadCount = inbox.conversations.reduce((total, item) => total + item.unread_count, 0);
+  const selectedConversation = inbox.conversations.find((item) => item.id === inbox.selectedConversationId) ?? inbox.conversations[0];
+  const activeConversations = inbox.conversations.filter((item) => item.status !== "archived");
+  const unreadConversations = inbox.conversations.filter((item) => item.unread_count > 0);
+  const archivedConversations = inbox.conversations.filter((item) => item.status === "archived");
+  const visibleConversations =
+    activeSection === "unread" ? unreadConversations : activeSection === "archive" ? archivedConversations : activeConversations;
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#078b8b]">Support Inbox</p>
+          <h2 className="mt-1 text-2xl font-semibold text-slate-950">客服消息</h2>
+          <p className="mt-1 text-sm text-slate-500">集中处理咨询、未读提醒、快捷回复和历史对话存档。</p>
+        </div>
+        <div className="flex items-center gap-2 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+          <Bell className="h-4 w-4" />
+          {unreadCount} 条未读
+        </div>
+      </div>
+      {!inbox.configured ? <p className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">客服消息数据库暂未配置。请先执行 supabase/schema.sql 中的 support_conversations 和 support_messages 表结构。</p> : null}
+      {loading ? <p className="text-sm text-slate-500">正在同步客服消息...</p> : null}
+
+      {activeSection === "messages" || activeSection === "unread" ? (
+        <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
+          <div className="max-h-[620px] overflow-auto border border-slate-200">
+            {visibleConversations.length ? visibleConversations.map((conversation) => (
+              <button
+                key={conversation.id}
+                type="button"
+                onClick={() => onSelectConversation(conversation.id)}
+                className={`block w-full border-b border-slate-200 px-4 py-3 text-left transition ${
+                  selectedConversation?.id === conversation.id ? "bg-slate-900 text-white" : conversation.unread_count ? "bg-[#eefafa] hover:bg-[#dff5f5]" : "bg-white hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">{conversation.customer_name}</span>
+                  {conversation.unread_count ? <span className="bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">{conversation.unread_count}</span> : null}
+                </div>
+                <p className={`mt-1 text-xs ${selectedConversation?.id === conversation.id ? "text-white/70" : "text-slate-500"}`}>{conversation.subject}</p>
+                <p className={`mt-2 line-clamp-2 text-sm leading-5 ${selectedConversation?.id === conversation.id ? "text-white/80" : "text-slate-600"}`}>{conversation.last_message}</p>
+              </button>
+            )) : <p className="p-4 text-sm text-slate-500">暂无客服消息。</p>}
+          </div>
+
+          <div className="grid gap-4 border border-slate-200 p-4">
+            {selectedConversation ? (
+              <>
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-950">{selectedConversation.customer_name}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{selectedConversation.customer_email ?? "未留下邮箱"} · {selectedConversation.status}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => onMarkRead(selectedConversation.id)} className="border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">标记已读</button>
+                    <button type="button" onClick={() => onArchive(selectedConversation.id)} className="border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">归档</button>
+                  </div>
+                </div>
+                <div className="max-h-[360px] overflow-auto bg-slate-50 p-4">
+                  <div className="grid gap-3">
+                    {inbox.messages.map((message) => (
+                      <div key={message.id} className={`max-w-[82%] px-4 py-3 text-sm leading-6 ${message.sender === "user" ? "mr-auto bg-white text-slate-700" : "ml-auto bg-[#078b8b] text-white"}`}>
+                        {message.body}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <label className={labelClass}>
+                  回复内容
+                  <textarea className={inputClass} rows={5} value={reply} onChange={(event) => onReplyChange(event.target.value)} placeholder="输入客服回复..." />
+                </label>
+                <button type="button" onClick={() => onSendReply(selectedConversation.id)} className={buttonClass}>
+                  <Reply className="h-4 w-4" />
+                  发送回复
+                </button>
+              </>
+            ) : <p className="text-sm text-slate-500">请选择一条会话。</p>}
+          </div>
+        </div>
+      ) : null}
+
+      {activeSection === "quick-reply" ? (
+        <div className="grid gap-4 lg:grid-cols-[0.42fr_0.58fr]">
+          <div className="border border-slate-200 p-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+              <Reply className="h-4 w-4" />
+              一键回复模板
+            </div>
+            <div className="mt-4 grid gap-2">
+              {quickReplies.map((reply) => (
+                <button key={reply} type="button" onClick={() => onReplyChange(reply)} className="border border-slate-200 bg-white px-3 py-2 text-left text-sm leading-6 text-slate-700 transition hover:border-[#078b8b] hover:bg-[#eefafa]">
+                  {reply}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="border border-slate-200 p-4">
+            <label className={labelClass}>
+              回复内容
+              <textarea className={inputClass} rows={8} value={reply} onChange={(event) => onReplyChange(event.target.value)} />
+            </label>
+            <button type="button" disabled={!selectedConversation} onClick={() => selectedConversation ? onSendReply(selectedConversation.id) : undefined} className={`${buttonClass} mt-4`}>
+              <Reply className="h-4 w-4" />
+              发送回复
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {activeSection === "archive" ? (
+        <div className="grid gap-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+            <Archive className="h-4 w-4" />
+            历史对话存档
+          </div>
+        <div className="overflow-hidden border border-slate-200">
+          <table className="w-full min-w-[680px] border-collapse text-left text-sm">
+            <thead className="bg-slate-50 text-slate-500">
+              <tr>
+                <th className="border-b border-slate-200 px-4 py-3 font-semibold">存档编号</th>
+                <th className="border-b border-slate-200 px-4 py-3 font-semibold">客户</th>
+                <th className="border-b border-slate-200 px-4 py-3 font-semibold">主题</th>
+                <th className="border-b border-slate-200 px-4 py-3 font-semibold">关闭日期</th>
+                <th className="border-b border-slate-200 px-4 py-3 font-semibold">负责人</th>
+              </tr>
+            </thead>
+            <tbody>
+              {archivedConversations.map((item) => (
+                <tr key={item.id}>
+                  <td className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-950">{item.id.slice(0, 8)}</td>
+                  <td className="border-b border-slate-200 px-4 py-3 text-slate-700">{item.customer_name}</td>
+                  <td className="border-b border-slate-200 px-4 py-3 text-slate-700">{item.subject}</td>
+                  <td className="border-b border-slate-200 px-4 py-3 text-slate-700">{new Date(item.last_message_at).toLocaleDateString()}</td>
+                  <td className="border-b border-slate-200 px-4 py-3 text-slate-700">
+                    <button type="button" onClick={() => onReopen(item.id)} className="font-semibold text-[#078b8b]">重新打开</button>
+                  </td>
+                </tr>
+              ))}
+              {!archivedConversations.length ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">暂无历史存档。</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  return <h2 className="border-b border-slate-200 pb-4 text-xl font-semibold">{title}</h2>;
+}
+
+function TextBlock({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className={labelClass}>
+      {label}
+      <input className={inputClass} value={value ?? ""} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function RecordEditor<T extends Record<string, unknown>>({
+  items,
+  selected,
+  labelKey,
+  onSelect,
+  children
+}: {
+  items: T[];
+  selected: number;
+  labelKey: keyof T;
+  onSelect: (index: number) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
+      <div className="max-h-[72vh] overflow-auto border border-slate-200">
+        {items.map((item, index) => (
+          <button
+            key={String(item.id ?? index)}
+            type="button"
+            onClick={() => onSelect(index)}
+            className={`block w-full border-b border-slate-200 px-4 py-3 text-left text-sm ${selected === index ? "bg-slate-900 text-white" : "hover:bg-slate-50"}`}
+          >
+            {String(item[labelKey] ?? item.id ?? index)}
+          </button>
+        ))}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function ToggleRow({ active, order, onActive, onOrder }: { active: boolean; order: number; onActive: (value: boolean) => void; onOrder: (value: number) => void }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <input type="checkbox" checked={active} onChange={(event) => onActive(event.target.checked)} />
+        前台显示
+      </label>
+      <label className={labelClass}>
+        排序
+        <input className={inputClass} type="number" value={order} onChange={(event) => onOrder(Number(event.target.value))} />
+      </label>
+    </div>
+  );
+}
+
+function ProductForm({ product, saving, update, save }: { product: ProductRow; saving: boolean; update: (product: ProductRow) => void; save: () => void }) {
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
+        <TextBlock label="产品名" value={product.name} onChange={(value) => update({ ...product, name: value, id: product.id || uid("prod", value) })} />
+        <TextBlock label="Slug" value={product.slug} onChange={(value) => update({ ...product, slug: value })} />
+        <label className={labelClass}>
+          系列
+          <select className={inputClass} value={product.line_slug} onChange={(event) => update({ ...product, line_slug: event.target.value as ProductRow["line_slug"] })}>
+            <option value="lift-5f">Lift 5F</option>
+            <option value="lift-5">Lift 5</option>
+            <option value="lift-x">Lift X</option>
+          </select>
+        </label>
+      </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <label className={labelClass}>
+          一级大类目
+          <select className={inputClass} value={product.primary_category ?? "efoils"} onChange={(event) => update({ ...product, primary_category: event.target.value as ProductRow["primary_category"] })}>
+            <option value="efoils">Efoils</option>
+            <option value="foils">Foils</option>
+          </select>
+        </label>
+        <label className={labelClass}>价格（美分）<input className={inputClass} type="number" value={product.price_cents} onChange={(event) => update({ ...product, price_cents: Number(event.target.value) })} /></label>
+        <label className={labelClass}>状态<select className={inputClass} value={product.status} onChange={(event) => update({ ...product, status: event.target.value as ProductRow["status"] })}><option value="draft">草稿</option><option value="published">发布</option></select></label>
+        <label className={labelClass}>排序<input className={inputClass} type="number" value={product.sort_order} onChange={(event) => update({ ...product, sort_order: Number(event.target.value) })} /></label>
+      </div>
+      <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={product.is_best_seller} onChange={(event) => update({ ...product, is_best_seller: event.target.checked })} /> 设为热卖</label>
+      <label className={labelClass}>产品摘要<textarea className={inputClass} rows={3} value={product.summary} onChange={(event) => update({ ...product, summary: event.target.value })} /></label>
+      <label className={labelClass}>产品描述<textarea className={inputClass} rows={5} value={product.description} onChange={(event) => update({ ...product, description: event.target.value })} /></label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className={labelClass}>产品图片 URL（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.images)} onChange={(event) => update({ ...product, images: linesToArray(event.target.value) })} /></label>
+        <label className={labelClass}>颜色选项（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.color_options)} onChange={(event) => update({ ...product, color_options: linesToArray(event.target.value) })} /></label>
+      </div>
+      <label className={labelClass}>颜色图片 JSON<textarea className={inputClass} rows={5} value={JSON.stringify(product.color_images ?? {}, null, 2)} onChange={(event) => {
+        try {
+          update({ ...product, color_images: JSON.parse(event.target.value) as Record<string, string[]> });
+        } catch {
+          update(product);
+        }
+      }} /></label>
+      <label className={labelClass}>详情卖点（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.details)} onChange={(event) => update({ ...product, details: linesToArray(event.target.value) })} /></label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <TextBlock label="详情区眉标" value={product.detail_eyebrow} onChange={(value) => update({ ...product, detail_eyebrow: value })} />
+        <TextBlock label="详情区标题" value={product.detail_title} onChange={(value) => update({ ...product, detail_title: value })} />
+        <TextBlock label="对比区眉标" value={product.comparison_eyebrow} onChange={(value) => update({ ...product, comparison_eyebrow: value })} />
+        <TextBlock label="对比区标题" value={product.comparison_title} onChange={(value) => update({ ...product, comparison_title: value })} />
+      </div>
+      <label className={labelClass}>规格参数（每行 key: value）<textarea className={inputClass} rows={6} value={specsToText(product.specs)} onChange={(event) => update({ ...product, specs: textToSpecs(event.target.value) })} /></label>
+      <button type="button" disabled={saving} onClick={save} className={buttonClass}><Save className="h-4 w-4" /> 保存产品</button>
+    </div>
+  );
+}

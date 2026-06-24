@@ -1,4 +1,29 @@
-export const homeContent = {
+import { getSupabaseClient } from "./supabase";
+
+export type HomeContent = {
+  hero: {
+    videoSrc: string;
+    title: string;
+    copy: string;
+  };
+  productLines: {
+    title: string;
+    copy: string;
+    featuredProductSlugs: Record<string, string>;
+    heroVideos: Record<string, string>;
+  };
+  bestSellers: {
+    title: string;
+    copy: string;
+    productSlugs: string[];
+  };
+  reviews: {
+    title: string;
+    copy: string;
+  };
+};
+
+export const fallbackHomeContent: HomeContent = {
   hero: {
     videoSrc: "/videos/website-video.mp4",
     title: "Glide Every Water Moment",
@@ -26,3 +51,17 @@ export const homeContent = {
     copy: "Authentic feedback from thousands of efoil riders worldwide.\nEvery five-star review speaks to smooth glides and reliable performance."
   }
 };
+
+export async function getHomeContent(): Promise<HomeContent> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return fallbackHomeContent;
+
+  const { data, error } = await supabase
+    .from("site_content")
+    .select("content")
+    .eq("key", "home")
+    .maybeSingle();
+
+  if (error || !data?.content) return fallbackHomeContent;
+  return { ...fallbackHomeContent, ...(data.content as Partial<HomeContent>) };
+}

@@ -1,19 +1,16 @@
 import { notFound } from "next/navigation";
 import { CategoryHero } from "@/components/CategoryHero";
 import { ProductCard } from "@/components/ProductCard";
-import { getProductLine, getProductLines, getProductsByLine } from "@/lib/data";
-import { homeContent } from "@/lib/site-content";
+import { getProductLine, getProductsByLine } from "@/lib/data";
+import { getHomeContent } from "@/lib/site-content";
+
+export const dynamic = "force-dynamic";
 
 type ProductListPageProps = {
   params: Promise<{
     line: string;
   }>;
 };
-
-export async function generateStaticParams() {
-  const lines = await getProductLines();
-  return lines.map((line) => ({ line: line.slug }));
-}
 
 export default async function ProductListPage({ params }: ProductListPageProps) {
   const { line: slug } = await params;
@@ -23,7 +20,7 @@ export default async function ProductListPage({ params }: ProductListPageProps) 
     notFound();
   }
 
-  const products = await getProductsByLine(line.slug);
+  const [products, homeContent] = await Promise.all([getProductsByLine(line.slug), getHomeContent()]);
   const videoSrc = homeContent.productLines.heroVideos[line.slug as keyof typeof homeContent.productLines.heroVideos];
 
   return (

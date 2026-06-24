@@ -14,6 +14,7 @@ type HeaderProps = {
 
 export function Header({ lines }: HeaderProps) {
   const [open, setOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<"efoils" | "foils" | null>(null);
   const pathname = usePathname();
   const { totalQuantity, openCart } = useCart();
   const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
@@ -37,6 +38,10 @@ export function Header({ lines }: HeaderProps) {
     `relative block bg-white px-5 py-3 text-ink transition after:absolute after:bottom-2 after:left-5 after:h-px after:w-[calc(100%-40px)] after:origin-center after:scale-x-0 after:bg-[#078b8b] after:transition hover:text-[#078b8b] hover:after:scale-x-100 ${dropdownTypeClass}`;
   const toolButtonClass =
     "grid h-12 w-12 place-items-center border border-transparent text-ink transition hover:text-[#078b8b] focus:outline-none focus:ring-2 focus:ring-[#078b8b] focus:ring-offset-2";
+  const dropdownClass = (name: "efoils" | "foils") =>
+    `absolute left-1/2 top-full z-[80] w-56 -translate-x-1/2 bg-white p-3 shadow-[0_22px_60px_rgba(39,41,44,0.14)] transition group-hover:visible group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 ${
+      openDropdown === name ? "visible pointer-events-auto translate-y-0 opacity-100" : "invisible pointer-events-none translate-y-3 opacity-0"
+    }`;
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-white/95 backdrop-blur-xl">
@@ -49,11 +54,26 @@ export function Header({ lines }: HeaderProps) {
         </Link>
 
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center justify-center gap-10 xl:flex" aria-label="Primary navigation">
-          <div className="group relative">
-            <Link href="/#efoils" className={navLinkClass}>
+          <div
+            className="group relative"
+            onPointerEnter={() => setOpenDropdown("efoils")}
+            onMouseEnter={() => setOpenDropdown("efoils")}
+            onMouseLeave={() => setOpenDropdown(null)}
+            onFocus={() => setOpenDropdown("efoils")}
+          >
+            <Link
+              href="/#efoils"
+              className={navLinkClass}
+              onClick={(event) => {
+                if (openDropdown !== "efoils") {
+                  event.preventDefault();
+                  setOpenDropdown("efoils");
+                }
+              }}
+            >
               Efoils
             </Link>
-            <div className="invisible pointer-events-none absolute left-1/2 top-full w-56 -translate-x-1/2 translate-y-3 bg-white p-3 opacity-0 shadow-[0_22px_60px_rgba(39,41,44,0.14)] transition group-hover:visible group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100">
+            <div className={dropdownClass("efoils")}>
               <div className="grid gap-2">
                 {efoilItems.map((item) => (
                   <Link key={item.href} href={item.href} className={dropdownLinkClass}>
@@ -63,11 +83,26 @@ export function Header({ lines }: HeaderProps) {
               </div>
             </div>
           </div>
-          <div className="group relative">
-            <Link href="/#foils" className={navLinkClass}>
+          <div
+            className="group relative"
+            onPointerEnter={() => setOpenDropdown("foils")}
+            onMouseEnter={() => setOpenDropdown("foils")}
+            onMouseLeave={() => setOpenDropdown(null)}
+            onFocus={() => setOpenDropdown("foils")}
+          >
+            <Link
+              href="/#foils"
+              className={navLinkClass}
+              onClick={(event) => {
+                if (openDropdown !== "foils") {
+                  event.preventDefault();
+                  setOpenDropdown("foils");
+                }
+              }}
+            >
               Foils
             </Link>
-            <div className="invisible pointer-events-none absolute left-1/2 top-full w-56 -translate-x-1/2 translate-y-3 bg-white p-3 opacity-0 shadow-[0_22px_60px_rgba(39,41,44,0.14)] transition group-hover:visible group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100">
+            <div className={dropdownClass("foils")}>
               <div className="grid gap-2">
                 {foilItems.map((item) => (
                   <Link key={item.label} href={item.href} className={dropdownLinkClass}>

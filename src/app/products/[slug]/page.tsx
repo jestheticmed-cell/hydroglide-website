@@ -1,18 +1,14 @@
 import { notFound } from "next/navigation";
 import { ProductDetailHero } from "@/components/ProductDetailHero";
-import { formatPrice, getProduct, getProductLines, getProductsByLine } from "@/lib/data";
+import { formatPrice, getProduct, getProductsByLine } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
 
 type ProductDetailPageProps = {
   params: Promise<{
     slug: string;
   }>;
 };
-
-export async function generateStaticParams() {
-  const lines = await getProductLines();
-  const groups = await Promise.all(lines.map((line) => getProductsByLine(line.slug)));
-  return groups.flat().map((product) => ({ slug: product.slug }));
-}
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
