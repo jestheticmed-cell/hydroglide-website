@@ -12,6 +12,12 @@ type SupportMessageRow = {
   created_at: string;
 };
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error && "message" in error) return String((error as { message?: unknown }).message);
+  return "Unable to send support message.";
+}
+
 async function readMessages(supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>, conversationId: string) {
   const { data, error } = await supabase
     .from("support_messages")
@@ -26,7 +32,7 @@ async function readMessages(supabase: NonNullable<ReturnType<typeof getSupabaseS
 export async function GET(request: NextRequest) {
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
-    return NextResponse.json({ configured: false, messages: [] });
+    return NextResponse.json({ configured: false, error: "Missing Supabase service role configuration.", messages: [] });
   }
 
   const conversationId = request.nextUrl.searchParams.get("conversationId");
@@ -37,14 +43,14 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({ configured: true, conversationId, messages: await readMessages(supabase, conversationId) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load support messages." }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
-    return NextResponse.json({ configured: false, error: "Support messaging is not configured." }, { status: 503 });
+    return NextResponse.json({ configured: false, error: "Support messaging is not configured. Check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel." }, { status: 503 });
   }
 
   try {
@@ -110,6 +116,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ configured: true, conversationId, messages: await readMessages(supabase, conversationId) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to send support message." }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
