@@ -40,14 +40,16 @@ export function LoginPanel() {
   const showEmailError = submitted && !email.trim();
   const showCodeError = codeSubmitted && verificationCode.trim().length < 6;
   const callbackError = searchParams.get("error");
+  const callbackDetail = searchParams.get("detail");
   const callbackMessage =
-    callbackError === "config"
+    callbackDetail ||
+    (callbackError === "config"
       ? "Google sign-in is not configured yet. Please try again later."
       : callbackError === "profile"
         ? "Your Google account was verified, but your profile could not be saved. Please try again."
         : callbackError
           ? "Google sign-in was not completed. Please try again."
-          : "";
+          : "");
   const accountPath = `/account?email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`;
 
   async function requestEmailCode() {

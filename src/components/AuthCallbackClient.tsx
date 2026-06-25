@@ -13,6 +13,16 @@ function getSafeNextPath(value: string | null) {
 
 export function AuthCallbackClient() {
   useEffect(() => {
+    function fail(loginPath: string, error: string, detail?: string) {
+      const params = new URLSearchParams({ error });
+
+      if (detail) {
+        params.set("detail", detail.slice(0, 180));
+      }
+
+      window.location.replace(`${loginPath}&${params.toString()}`);
+    }
+
     async function completeSignIn() {
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -25,32 +35,30 @@ export function AuthCallbackClient() {
       const supabase = getSupabaseAuthClient();
 
       if (!supabase) {
-        window.location.replace(`${loginPath}&error=config`);
+        fail(loginPath, "config", "Supabase browser client is missing URL or anon key.");
         return;
       }
 
       if (oauthError) {
-        window.location.replace(`${loginPath}&error=oauth`);
+        fail(loginPath, "oauth", params.get("error_description") || hashParams.get("error_description") || oauthError);
         return;
       }
 
-      const existingSession = await supabase.auth.getSession();
-
-      if (!existingSession.data.session?.access_token && code) {
+      if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (error) {
-          window.location.replace(`${loginPath}&error=oauth`);
+          fail(loginPath, "oauth", error.message);
           return;
         }
-      } else if (!existingSession.data.session?.access_token && hashAccessToken && hashRefreshToken) {
+      } else if (hashAccessToken && hashRefreshToken) {
         const { error } = await supabase.auth.setSession({
           access_token: hashAccessToken,
           refresh_token: hashRefreshToken
         });
 
         if (error) {
-          window.location.replace(`${loginPath}&error=oauth`);
+          fail(loginPath, "oauth", error.message);
           return;
         }
       }
@@ -58,7 +66,7 @@ export function AuthCallbackClient() {
       const { data, error: userError } = await supabase.auth.getSession();
 
       if (userError || !data.session?.access_token) {
-        window.location.replace(`${loginPath}&error=oauth`);
+        fail(loginPath, "oauth", userError?.message || "No Supabase session was created after OAuth callback.");
         return;
       }
 
@@ -72,7 +80,8 @@ export function AuthCallbackClient() {
       });
 
       if (!response.ok) {
-        window.location.replace(`${loginPath}&error=profile`);
+        const detail = await response.text().catch(() => "");
+        fail(loginPath, "profile", detail || "Profile sync request failed.");
         return;
       }
 

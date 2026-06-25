@@ -1,4 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+let browserAuthClient: SupabaseClient | null = null;
 
 export function getSupabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,7 +26,11 @@ export function getSupabaseAuthClient() {
     return null;
   }
 
-  return createClient(url, anonKey, {
+  if (browserAuthClient) {
+    return browserAuthClient;
+  }
+
+  browserAuthClient = createClient(url, anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -32,6 +38,8 @@ export function getSupabaseAuthClient() {
       flowType: "pkce"
     }
   });
+
+  return browserAuthClient;
 }
 
 export function getSupabaseServiceClient() {
