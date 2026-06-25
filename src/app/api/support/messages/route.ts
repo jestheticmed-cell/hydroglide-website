@@ -12,6 +12,15 @@ type SupportMessageRow = {
   created_at: string;
 };
 
+type ConversationInsert = {
+  customer_name: string;
+  customer_email?: string | null;
+  subject: string;
+  unread_count: number;
+  last_message: string;
+  last_message_at: string;
+};
+
 function getErrorMessage(error: unknown) {
   const connectionMessage = "Vercel cannot connect to Supabase. Check NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and whether your Supabase project is active.";
 
@@ -26,6 +35,10 @@ function getErrorMessage(error: unknown) {
     return message;
   }
   return "Unable to send support message.";
+}
+
+function isMissingCustomerEmailColumn(error: unknown) {
+  return getErrorMessage(error).includes("customer_email");
 }
 
 async function readMessages(supabase: NonNullable<ReturnType<typeof getSupabaseServiceClient>>, conversationId: string) {
@@ -80,20 +93,27 @@ export async function POST(request: NextRequest) {
     let conversationId = body.conversationId;
 
     if (!conversationId) {
-      const { data, error } = await supabase
-        .from("support_conversations")
-        .insert({
-          customer_name: body.customerName?.trim() || "Website visitor",
-          customer_email: body.customerEmail?.trim() || null,
-          subject: body.subject?.trim() || message.slice(0, 80),
-          unread_count: 1,
-          last_message: message,
-          last_message_at: new Date().toISOString()
-        })
-        .select("id")
-        .single();
+      const conversationRecord: ConversationInsert = {
+        customer_name: body.customerName?.trim() || "Website visitor",
+        customer_email: body.customerEmail?.trim() || null,
+        subject: body.subject?.trim() || message.slice(0, 80),
+        unread_count: 1,
+        last_message: message,
+        last_message_at: new Date().toISOString()
+      };
+
+      let { data, error } = await supabase.from("support_conversations").insert(conversationRecord).select("id").single();
+
+      if (error && isMissingCustomerEmailColumn(error)) {
+        const legacyConversationRecord = { ...conversationRecord };
+        delete legacyConversationRecord.customer_email;
+        const legacyResult = await supabase.from("support_conversations").insert(legacyConversationRecord).select("id").single();
+        data = legacyResult.data;
+        error = legacyResult.error;
+      }
 
       if (error) throw error;
+      if (!data) throw new Error("Unable to create support conversation.");
       conversationId = data.id as string;
     } else {
       const { data: conversation } = await supabase
