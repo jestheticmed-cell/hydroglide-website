@@ -624,7 +624,13 @@ export function AdminConsole() {
                 <TextBlock label="热卖标题" value={data.homeContent.bestSellers.title} onChange={(value) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, title: value } })} />
               </div>
               <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
+              <label className={labelClass}>首页系列推荐商品（每行 系列slug: 产品slug）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.featuredProductSlugs)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, featuredProductSlugs: textToSpecs(event.target.value) } })} /></label>
+              <label className={labelClass}>系列页视频地址（每行 系列slug: 视频URL）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.heroVideos)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, heroVideos: textToSpecs(event.target.value) } })} /></label>
               <label className={labelClass}>热卖产品 Slug（每行一个）<textarea className={inputClass} rows={4} value={arrayToLines(data.homeContent.bestSellers.productSlugs)} onChange={(event) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, productSlugs: linesToArray(event.target.value) } })} /></label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <TextBlock label="评价区标题" value={data.homeContent.reviews.title} onChange={(value) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, title: value } })} />
+                <label className={labelClass}>评价区文案<textarea className={inputClass} rows={4} value={data.homeContent.reviews.copy} onChange={(event) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, copy: event.target.value } })} /></label>
+              </div>
               <button type="button" disabled={saving} onClick={saveHome} className={buttonClass}><Save className="h-4 w-4" /> 保存首页文案</button>
             </div>
           ) : null}

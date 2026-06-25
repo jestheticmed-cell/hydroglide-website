@@ -5,6 +5,8 @@ import { CartProvider } from "@/components/CartProvider";
 import { getProductLines } from "@/lib/data";
 import "./globals.css";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Hydroglide eFoils | Premium Electric Hydrofoil Boards",
   description: "Hydroglide premium eFoil boards and foil systems for quiet electric flight, long range, and high-performance ocean riding.",

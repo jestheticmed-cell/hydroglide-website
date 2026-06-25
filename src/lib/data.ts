@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { heroSlides, productLines, products, reviews } from "./fallback-data";
 import { formatCents } from "./format";
 import { getSupabaseClient } from "./supabase";
@@ -105,6 +106,7 @@ const mapHeroSlide = (row: HeroSlideRow): HeroSlide => ({
 });
 
 export async function getHeroSlides(): Promise<HeroSlide[]> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) return heroSlides;
 
@@ -119,6 +121,7 @@ export async function getHeroSlides(): Promise<HeroSlide[]> {
 }
 
 export async function getProductLines(): Promise<ProductLine[]> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) return productLines;
 
@@ -138,6 +141,7 @@ export async function getProductLine(slug: string): Promise<ProductLine | null> 
 }
 
 export async function getProductsByLine(lineSlug: string): Promise<Product[]> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) {
     return products.filter((product) => product.lineSlug === lineSlug).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -158,6 +162,7 @@ export async function getProductsByLine(lineSlug: string): Promise<Product[]> {
 }
 
 export async function getBestSellers(): Promise<Product[]> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) return products.filter((product) => product.isBestSeller).sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -174,6 +179,7 @@ export async function getBestSellers(): Promise<Product[]> {
 }
 
 export async function getProduct(slug: string): Promise<Product | null> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) return products.find((product) => product.slug === slug) ?? null;
 
@@ -189,6 +195,7 @@ export async function getProduct(slug: string): Promise<Product | null> {
 }
 
 export async function getReviews(): Promise<Review[]> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) return reviews;
 

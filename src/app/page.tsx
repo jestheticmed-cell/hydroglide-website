@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const homeContent = await getHomeContent();
+  const heroVideo = homeContent.hero.videoSrc.trim() ? homeContent.hero : undefined;
   const featuredLineProductSlugs = Object.entries(homeContent.productLines.featuredProductSlugs);
   const [slides, lines, selectedBestSellers, selectedLineProducts, reviews] = await Promise.all([
     getHeroSlides(),
@@ -30,7 +31,7 @@ export default async function HomePage() {
 
   return (
     <main>
-      <HeroCarousel slides={slides} video={homeContent.hero} />
+      <HeroCarousel slides={slides} video={heroVideo} />
 
       <section id="efoils" className="bg-white py-20 sm:py-28">
         <div className="mx-auto grid max-w-7xl gap-6 px-5 sm:px-8 lg:grid-cols-[0.34fr_0.66fr] lg:items-center lg:gap-14 lg:px-10">

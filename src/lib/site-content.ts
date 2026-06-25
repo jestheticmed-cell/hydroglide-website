@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { getSupabaseClient } from "./supabase";
 
 export type HomeContent = {
@@ -53,6 +54,7 @@ export const fallbackHomeContent: HomeContent = {
 };
 
 export async function getHomeContent(): Promise<HomeContent> {
+  noStore();
   const supabase = getSupabaseClient();
   if (!supabase) return fallbackHomeContent;
 

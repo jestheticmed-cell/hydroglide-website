@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { fallbackHomeContent } from "@/lib/site-content";
 import { verifyAdminRequest } from "@/lib/admin-auth";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
@@ -7,6 +8,13 @@ import { getSupabaseServiceClient } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 
 const TABLES = new Set(["hero_slides", "product_lines", "products", "reviews"]);
+
+function revalidateStorefront() {
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/efoils/[line]", "page");
+  revalidatePath("/products/[slug]", "page");
+}
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -149,6 +157,7 @@ export async function POST(request: NextRequest) {
     if (body.content) {
       const { error } = await supabase.from("site_content").upsert({ key: "home", content: body.content, updated_at: new Date().toISOString() });
       if (error) throw error;
+      revalidateStorefront();
       return NextResponse.json({ ok: true });
     }
 
@@ -158,6 +167,7 @@ export async function POST(request: NextRequest) {
 
     const { error } = await supabase.from(body.table).upsert(body.record);
     if (error) throw error;
+    revalidateStorefront();
 
     return NextResponse.json({ ok: true });
   } catch (error) {
