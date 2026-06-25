@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
 type SyncUserPayload = {
-  provider?: "google" | "facebook";
+  provider?: "google" | "facebook" | "email";
 };
 
 export async function POST(request: NextRequest) {

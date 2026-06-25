@@ -14,10 +14,12 @@ export function LoginPanel() {
   const [codeSubmitted, setCodeSubmitted] = useState(false);
   const [authError, setAuthError] = useState("");
   const [emailNotice, setEmailNotice] = useState("");
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [step, setStep] = useState<"email" | "code">("email");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || "/";
+  const nextPath = searchParams.get("next") || "/account";
   const googleProvider = authProviders.google;
   const showEmailError = submitted && !email.trim();
   const showCodeError = codeSubmitted && verificationCode.trim().length < 6;
@@ -37,56 +39,84 @@ export function LoginPanel() {
     setAuthError("");
     setEmailNotice("");
 
-    if (!email.trim()) return;
+    const normalizedEmail = email.trim().toLowerCase();
 
-    setStep("code");
+    if (!normalizedEmail || isEmailLoading) return;
+
+    setIsEmailLoading(true);
     setEmailNotice("Sending verification code...");
-
     const supabase = getSupabaseAuthClient();
 
     if (!supabase) {
-      setEmailNotice("Preview mode: enter any 6-digit code to continue.");
+      setEmailNotice("");
+      setAuthError("Email sign-in is not configured yet. Please add Supabase URL and anon key.");
+      setIsEmailLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true
-      }
-    });
+    const { error } = await supabase.auth
+      .signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          shouldCreateUser: true
+        }
+      })
+      .catch((requestError: Error) => ({ data: null, error: requestError }));
 
     if (error) {
-      setEmailNotice("Preview mode: enter any 6-digit code to continue.");
-      setAuthError("Email verification could not be sent yet. You can continue in preview mode.");
+      setEmailNotice("");
+      setAuthError(error.message || "Email verification could not be sent. Please try again.");
+      setIsEmailLoading(false);
       return;
     }
 
+    setEmail(normalizedEmail);
     setEmailNotice("We sent a verification code to your email.");
     setStep("code");
+    setIsEmailLoading(false);
   }
 
   async function verifyEmailCode() {
     setCodeSubmitted(true);
     setAuthError("");
 
-    if (verificationCode.trim().length < 6) return;
+    if (verificationCode.trim().length < 6 || isEmailLoading) return;
 
     const supabase = getSupabaseAuthClient();
 
     if (!supabase) {
-      router.push(accountPath);
+      setAuthError("Email sign-in is not configured yet. Please add Supabase URL and anon key.");
       return;
     }
 
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: verificationCode.trim(),
-      type: "email"
-    });
+    setIsEmailLoading(true);
+    const { data, error } = await supabase.auth
+      .verifyOtp({
+        email,
+        token: verificationCode.trim(),
+        type: "email"
+      })
+      .catch((requestError: Error) => ({ data: { session: null, user: null }, error: requestError }));
 
     if (error) {
       setAuthError("The verification code is incorrect or expired. Please try again.");
+      setIsEmailLoading(false);
+      return;
+    }
+
+    const accessToken = data.session?.access_token;
+
+    if (!accessToken) {
+      setAuthError("Email sign-in was verified, but the session could not be started. Please try again.");
+      setIsEmailLoading(false);
+      return;
+    }
+
+    const synced = await syncAuthenticatedUser(accessToken, "email");
+
+    if (!synced) {
+      setAuthError("Your email was verified, but your profile could not be saved. Please try again.");
+      setIsEmailLoading(false);
       return;
     }
 
@@ -95,28 +125,54 @@ export function LoginPanel() {
 
   async function signInWithGoogle() {
     setAuthError("");
+    setEmailNotice("");
+
+    if (isGoogleLoading) return;
+
+    setIsGoogleLoading(true);
     const supabase = getSupabaseAuthClient();
 
     if (!supabase) {
       setAuthError("Google sign-in is not available yet. Please configure Supabase OAuth settings.");
+      setIsGoogleLoading(false);
       return;
     }
 
     const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: googleProvider.id,
-      options: {
-        redirectTo,
-        scopes: googleProvider.scopes,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent"
+    const { error } = await supabase.auth
+      .signInWithOAuth({
+        provider: googleProvider.id,
+        options: {
+          redirectTo,
+          scopes: googleProvider.scopes,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent"
+          }
         }
-      }
-    });
+      })
+      .catch((requestError: Error) => ({ data: null, error: requestError }));
 
     if (error) {
-      setAuthError("Google sign-in could not be started. Please try again.");
+      setAuthError(error.message || "Google sign-in could not be started. Please try again.");
+      setIsGoogleLoading(false);
+    }
+  }
+
+  async function syncAuthenticatedUser(accessToken: string, provider: "google" | "facebook" | "email") {
+    try {
+      const response = await fetch("/api/auth/sync-user", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ provider })
+      });
+
+      return response.ok;
+    } catch {
+      return false;
     }
   }
 
@@ -139,10 +195,11 @@ export function LoginPanel() {
           <button
             type="button"
             onClick={signInWithGoogle}
-            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line bg-white text-[16px] font-medium text-ink transition hover:border-[#078b8b] hover:bg-[#f4f6f6] focus:outline-none focus:ring-2 focus:ring-[#078b8b] focus:ring-offset-2 sm:h-14 sm:text-[18px]"
+            disabled={isGoogleLoading}
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-line bg-white text-[16px] font-medium text-ink transition hover:border-[#078b8b] hover:bg-[#f4f6f6] focus:outline-none focus:ring-2 focus:ring-[#078b8b] focus:ring-offset-2 disabled:cursor-wait disabled:opacity-70 sm:h-14 sm:text-[18px]"
           >
             <GoogleIcon />
-            <span>Continue with Google</span>
+            <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
           </button>
 
           <div className="my-5 grid grid-cols-[1fr_auto_1fr] items-center gap-5 text-[16px] text-graphite sm:my-6 sm:gap-6 sm:text-[18px]">
@@ -169,7 +226,8 @@ export function LoginPanel() {
               <button
                 type="button"
                 onClick={requestEmailCode}
-                className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] sm:h-11 sm:w-11"
+                disabled={isEmailLoading}
+                className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] disabled:cursor-wait disabled:opacity-60 sm:h-11 sm:w-11"
                 aria-label="Continue with email"
               >
                 <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
@@ -222,7 +280,8 @@ export function LoginPanel() {
               <button
                 type="button"
                 onClick={verifyEmailCode}
-                className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] sm:h-11 sm:w-11"
+                disabled={isEmailLoading}
+                className="grid h-10 w-10 place-items-center text-ink transition hover:text-[#078b8b] disabled:cursor-wait disabled:opacity-60 sm:h-11 sm:w-11"
                 aria-label="Verify email code"
               >
                 <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
@@ -231,7 +290,12 @@ export function LoginPanel() {
             {showCodeError ? <span className="mt-2 block text-[16px] text-[#d94016]">Enter the verification code</span> : null}
           </label>
 
-          <button type="button" onClick={requestEmailCode} className="mt-5 text-[15px] text-[#078b8b] underline underline-offset-4 transition hover:text-ink">
+          <button
+            type="button"
+            onClick={requestEmailCode}
+            disabled={isEmailLoading}
+            className="mt-5 text-[15px] text-[#078b8b] underline underline-offset-4 transition hover:text-ink disabled:cursor-wait disabled:opacity-60"
+          >
             Resend code
           </button>
         </div>
