@@ -5,7 +5,7 @@ import { getSupabaseAuthClient } from "@/lib/supabase";
 
 function getSafeNextPath(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    return "/account";
   }
 
   return value;
@@ -15,21 +15,24 @@ export function AuthCallbackClient() {
   useEffect(() => {
     async function completeSignIn() {
       const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const code = params.get("code");
-      const nextPath = getSafeNextPath(params.get("next"));
+      const nextPath = getSafeNextPath(params.get("next") || hashParams.get("next"));
       const loginPath = `/login?next=${encodeURIComponent(nextPath)}`;
       const supabase = getSupabaseAuthClient();
 
-      if (!supabase || !code) {
+      if (!supabase) {
         window.location.replace(`${loginPath}&error=config`);
         return;
       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-      if (error) {
-        window.location.replace(`${loginPath}&error=oauth`);
-        return;
+        if (error) {
+          window.location.replace(`${loginPath}&error=oauth`);
+          return;
+        }
       }
 
       const { data, error: userError } = await supabase.auth.getSession();

@@ -6,6 +6,16 @@ import { useState } from "react";
 import { authProviders } from "@/lib/auth-providers";
 import { getSupabaseAuthClient } from "@/lib/supabase";
 
+function getAuthRedirectOrigin() {
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+
+  if (configuredUrl) {
+    return configuredUrl;
+  }
+
+  return window.location.origin;
+}
+
 export function LoginPanel() {
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -138,7 +148,7 @@ export function LoginPanel() {
       return;
     }
 
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+    const redirectTo = `${getAuthRedirectOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}`;
     const { error } = await supabase.auth
       .signInWithOAuth({
         provider: googleProvider.id,
