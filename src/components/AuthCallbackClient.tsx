@@ -34,14 +34,16 @@ export function AuthCallbackClient() {
         return;
       }
 
-      if (code) {
+      const existingSession = await supabase.auth.getSession();
+
+      if (!existingSession.data.session?.access_token && code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (error) {
           window.location.replace(`${loginPath}&error=oauth`);
           return;
         }
-      } else if (hashAccessToken && hashRefreshToken) {
+      } else if (!existingSession.data.session?.access_token && hashAccessToken && hashRefreshToken) {
         const { error } = await supabase.auth.setSession({
           access_token: hashAccessToken,
           refresh_token: hashRefreshToken

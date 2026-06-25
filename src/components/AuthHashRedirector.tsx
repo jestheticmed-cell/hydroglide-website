@@ -7,11 +7,20 @@ export function AuthHashRedirector() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (pathname === "/auth/callback" || !window.location.hash.includes("access_token=")) {
+    if (pathname === "/auth/callback") {
       return;
     }
 
-    window.location.replace(`/auth/callback${window.location.hash}`);
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const hasAuthCode = params.has("code") || params.has("error");
+    const hasAuthToken = hashParams.has("access_token") || hashParams.has("error");
+
+    if (!hasAuthCode && !hasAuthToken) {
+      return;
+    }
+
+    window.location.replace(`/auth/callback${window.location.search}${window.location.hash}`);
   }, [pathname]);
 
   return null;
