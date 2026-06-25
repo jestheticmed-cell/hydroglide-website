@@ -13,8 +13,8 @@ export function AuthHashRedirector() {
 
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const hasAuthCode = params.has("code") || params.has("error");
-    const hasAuthToken = hashParams.has("access_token") || hashParams.has("error");
+    const hasAuthCode = params.has("code");
+    const hasAuthToken = hashParams.has("access_token");
 
     if (!hasAuthCode && !hasAuthToken) {
       return;
