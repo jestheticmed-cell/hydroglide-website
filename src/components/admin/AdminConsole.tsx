@@ -322,7 +322,7 @@ export function AdminConsole() {
       const response = await fetch(`/api/admin/support${suffix}`, { headers });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "客服消息读取失败");
-      setSupportInbox(payload);
+      setSupportInbox({ ...payload, configured: payload.configured ?? true });
     } catch (supportError) {
       setError(supportError instanceof Error ? supportError.message : "客服消息读取失败");
     } finally {
@@ -415,7 +415,7 @@ export function AdminConsole() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "客服消息更新失败");
-      setSupportInbox(payload);
+      setSupportInbox({ ...payload, configured: payload.configured ?? true });
       if (action === "reply") setSupportReply("");
       setStatus(action === "reply" ? "客服回复已发送" : "客服消息状态已更新");
     } catch (supportError) {

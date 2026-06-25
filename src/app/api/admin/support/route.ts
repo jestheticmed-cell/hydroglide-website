@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     }
 
-    return NextResponse.json({ ok: true, ...(await readSupportData(supabase, body.conversationId)) });
+    return NextResponse.json({ ok: true, configured: true, ...(await readSupportData(supabase, body.conversationId)) });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to update support inbox." }, { status: 500 });
   }
