@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { AuthHashRedirector } from "./AuthHashRedirector";
 import { CartDrawer } from "./CartDrawer";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
@@ -25,6 +26,7 @@ export function AppChrome({ children, lines }: AppChromeProps) {
   if (isStandalonePage) {
     return (
       <>
+        <AuthHashRedirector />
         {children}
         {pathname?.startsWith("/admin") ? null : <CartDrawer />}
       </>
@@ -33,6 +35,7 @@ export function AppChrome({ children, lines }: AppChromeProps) {
 
   return (
     <>
+      <AuthHashRedirector />
       <Header lines={lines} />
       {children}
       <Footer />

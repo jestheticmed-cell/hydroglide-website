@@ -17,6 +17,9 @@ export function AuthCallbackClient() {
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const code = params.get("code");
+      const hashAccessToken = hashParams.get("access_token");
+      const hashRefreshToken = hashParams.get("refresh_token");
+      const oauthError = params.get("error") || hashParams.get("error");
       const nextPath = getSafeNextPath(params.get("next") || hashParams.get("next"));
       const loginPath = `/login?next=${encodeURIComponent(nextPath)}`;
       const supabase = getSupabaseAuthClient();
@@ -26,8 +29,23 @@ export function AuthCallbackClient() {
         return;
       }
 
+      if (oauthError) {
+        window.location.replace(`${loginPath}&error=oauth`);
+        return;
+      }
+
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+          window.location.replace(`${loginPath}&error=oauth`);
+          return;
+        }
+      } else if (hashAccessToken && hashRefreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: hashAccessToken,
+          refresh_token: hashRefreshToken
+        });
 
         if (error) {
           window.location.replace(`${loginPath}&error=oauth`);

@@ -8,12 +8,18 @@ import { getSupabaseAuthClient } from "@/lib/supabase";
 
 function getAuthRedirectOrigin() {
   const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  const currentOrigin = window.location.origin;
+  const isLocalOrigin = currentOrigin.includes("localhost") || currentOrigin.includes("127.0.0.1");
 
-  if (configuredUrl) {
+  if (!isLocalOrigin) {
+    return currentOrigin;
+  }
+
+  if (configuredUrl && !configuredUrl.includes("localhost") && !configuredUrl.includes("127.0.0.1")) {
     return configuredUrl;
   }
 
-  return window.location.origin;
+  return currentOrigin;
 }
 
 export function LoginPanel() {
