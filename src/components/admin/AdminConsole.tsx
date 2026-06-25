@@ -2,7 +2,8 @@
 
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
-import type { HomeContent } from "@/lib/site-content";
+import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
+import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
 
 type HeroSlideRow = {
   id: string;
@@ -151,6 +152,64 @@ const inputClass = "w-full border border-slate-300 bg-white px-3 py-2 text-sm te
 const labelClass = "grid gap-2 text-sm font-medium text-slate-700";
 const buttonClass = "inline-flex items-center justify-center gap-2 bg-[#078b8b] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#056f6f] disabled:cursor-not-allowed disabled:opacity-60";
 
+const fallbackAdminData: AdminData = {
+  configured: false,
+  message: "后台接口暂时不可用，已进入降级预览模式。",
+  homeContent: fallbackHomeContent,
+  heroSlides: heroSlides.map((slide, index) => ({
+    id: slide.id,
+    image: slide.image,
+    eyebrow: slide.eyebrow,
+    title: slide.title,
+    copy: slide.copy,
+    sort_order: index,
+    is_active: true
+  })),
+  productLines: productLines.map((line) => ({
+    id: line.id,
+    slug: line.slug,
+    name: line.name,
+    eyebrow: line.eyebrow,
+    tagline: line.tagline,
+    description: line.description,
+    hero_images: line.heroImages,
+    sort_order: line.sortOrder,
+    is_active: true
+  })),
+  products: products.map((product) => ({
+    id: product.id,
+    slug: product.slug,
+    primary_category: "efoils",
+    line_slug: product.lineSlug,
+    name: product.name,
+    price_cents: product.priceCents,
+    currency: product.currency,
+    summary: product.summary,
+    description: product.description,
+    images: product.images,
+    color_options: product.colorOptions,
+    color_images: product.colorImages ?? {},
+    details: product.details,
+    detail_eyebrow: product.detailEyebrow ?? "Product Details",
+    detail_title: product.detailTitle ?? "Built for refined electric flight.",
+    comparison_eyebrow: product.comparisonEyebrow ?? "Series Comparison",
+    comparison_title: product.comparisonTitle ?? "Compare models in this series.",
+    specs: product.specs,
+    is_best_seller: product.isBestSeller,
+    sort_order: product.sortOrder,
+    status: "published"
+  })),
+  reviews: reviews.map((review, index) => ({
+    id: review.id,
+    author_name: review.authorName,
+    location: review.location,
+    rating: review.rating,
+    body: review.body,
+    sort_order: index,
+    is_active: true
+  }))
+};
+
 function linesToArray(value: string) {
   return value.split("\n").map((item) => item.trim()).filter(Boolean);
 }
@@ -216,18 +275,41 @@ export function AdminConsole() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/content", { headers: nextToken ? { "x-admin-token": nextToken } : undefined });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "后台数据读取失败");
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+      const response = await fetch("/api/admin/content", {
+        headers: nextToken ? { "x-admin-token": nextToken } : undefined,
+        signal: controller.signal
+      });
+      window.clearTimeout(timeoutId);
+
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) throw new Error(payload.error ?? "管理口令不正确");
+      if (!response.ok) {
+        setAdminToken(nextToken);
+        setData(fallbackAdminData);
+        setStatus("后台接口暂时不可用，已进入降级预览模式。");
+        setError(payload.error ?? `后台接口返回 ${response.status}，请检查 Vercel 环境变量和部署日志。`);
+        return true;
+      }
       setAdminToken(nextToken);
       setData(payload);
       setStatus(payload.message ?? "后台数据已加载");
       return true;
     } catch (loadError) {
-      setData(null);
-      setAdminToken("");
-      setError(loadError instanceof Error ? loadError.message : "后台数据读取失败");
-      return false;
+      const message = loadError instanceof Error ? loadError.message : "后台数据读取失败";
+      if (message.includes("Invalid admin token") || message.includes("管理口令不正确")) {
+        setData(null);
+        setAdminToken("");
+        setError(message);
+        return false;
+      }
+
+      setAdminToken(nextToken);
+      setData(fallbackAdminData);
+      setStatus("后台接口暂时不可用，已进入降级预览模式。");
+      setError(message === "The operation was aborted." ? "后台接口请求超时，请检查 Vercel 部署是否已更新，以及 Supabase 环境变量是否正确。" : message);
+      return true;
     } finally {
       setLoading(false);
     }
