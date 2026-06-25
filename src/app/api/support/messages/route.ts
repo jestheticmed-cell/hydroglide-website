@@ -13,14 +13,18 @@ type SupportMessageRow = {
 };
 
 function getErrorMessage(error: unknown) {
+  const connectionMessage = "Vercel cannot connect to Supabase. Check NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and whether your Supabase project is active.";
+
   if (error instanceof Error) {
-    if (error.message === "fetch failed") {
-      return "Vercel cannot connect to Supabase. Check NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and whether your Supabase project is active.";
-    }
+    if (error.message.includes("fetch failed")) return connectionMessage;
 
     return error.message;
   }
-  if (typeof error === "object" && error && "message" in error) return String((error as { message?: unknown }).message);
+  if (typeof error === "object" && error && "message" in error) {
+    const message = String((error as { message?: unknown }).message);
+    if (message.includes("fetch failed")) return connectionMessage;
+    return message;
+  }
   return "Unable to send support message.";
 }
 
