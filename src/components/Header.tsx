@@ -25,11 +25,11 @@ export function Header({ lines }: HeaderProps) {
     .map((line) => ({
       href: `/efoils/${line.slug}`,
       label: line.name.replace(/\s/g, "")
-    }));
+  }));
   const foilItems = [
-    { href: "/#foils", label: "Boards" },
-    { href: "/#foils", label: "Masts" },
-    { href: "/#foils", label: "Wings" }
+    { href: "/foils/boards", label: "Boards" },
+    { href: "/foils/masts", label: "Masts" },
+    { href: "/foils/wings", label: "Wings" }
   ];
   const navTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[22px] font-normal tracking-normal";
   const dropdownTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[18px] font-normal tracking-normal";
@@ -95,7 +95,7 @@ export function Header({ lines }: HeaderProps) {
             onFocus={() => setOpenDropdown("foils")}
           >
             <Link
-              href="/#foils"
+              href="/foils/boards"
               className={navLinkClass}
               onClick={(event) => {
                 if (openDropdown !== "foils") {

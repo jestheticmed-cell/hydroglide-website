@@ -10,12 +10,14 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product, showSummary = false }: ProductCardProps) {
+  const image = product.images[0] ?? "/brand/hydroglide-logo.jpg";
+
   return (
     <article className="group border border-line bg-white">
       <Link href={`/products/${product.slug}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-mist">
           <Image
-            src={product.images[0]}
+            src={image}
             alt={product.name}
             fill
             sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
@@ -34,7 +36,7 @@ export function ProductCard({ product, showSummary = false }: ProductCardProps) 
           productName={product.name}
           priceCents={product.priceCents}
           currency={product.currency}
-          image={product.images[0]}
+          image={image}
           compact
         />
       </div>

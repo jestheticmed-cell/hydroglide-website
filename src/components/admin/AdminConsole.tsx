@@ -440,8 +440,8 @@ export function AdminConsole() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "保存失败");
-      setStatus(message);
       await loadData(adminToken);
+      setStatus(message);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "保存失败");
     } finally {
@@ -550,7 +550,7 @@ export function AdminConsole() {
       specs: {},
       is_best_seller: false,
       sort_order: data?.products.length ?? 0,
-      status: "draft"
+      status: "published"
     };
     setData((current) => (current ? { ...current, products: [...current.products, product] } : current));
     setSelected((current) => ({ ...current, products: data?.products.length ?? 0 }));
@@ -1284,7 +1284,14 @@ function ProductForm({
           </select>
         </label>
         <label className={labelClass}>价格（美分）<NumberInput value={product.price_cents} onChange={(value) => update({ ...product, price_cents: value })} /></label>
-        <label className={labelClass}>状态<select className={inputClass} value={product.status} onChange={(event) => update({ ...product, status: event.target.value as ProductRow["status"] })}><option value="draft">草稿</option><option value="published">发布</option></select></label>
+        <label className={labelClass}>
+          状态
+          <select className={inputClass} value={product.status} onChange={(event) => update({ ...product, status: event.target.value as ProductRow["status"] })}>
+            <option value="draft">草稿</option>
+            <option value="published">发布</option>
+          </select>
+          <span className="text-xs font-normal text-slate-500">只有“发布”状态会在前台展示。</span>
+        </label>
         <label className={labelClass}>排序<NumberInput value={product.sort_order} onChange={(value) => update({ ...product, sort_order: value })} /></label>
       </div>
       <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={product.is_best_seller} onChange={(event) => update({ ...product, is_best_seller: event.target.checked })} /> 设为热卖</label>

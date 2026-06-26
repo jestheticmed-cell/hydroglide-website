@@ -6,6 +6,8 @@ import { getHomeContent } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
 
+const efoilLineSlugs = new Set(["lift-5f", "lift-5", "lift-x"]);
+
 export default async function HomePage() {
   const homeContent = await getHomeContent();
   const heroVideo = homeContent.hero.videoSrc.trim() ? homeContent.hero : undefined;
@@ -17,6 +19,7 @@ export default async function HomePage() {
     Promise.all(featuredLineProductSlugs.map(([, productSlug]) => getProduct(productSlug))),
     getReviews()
   ]);
+  const efoilLines = lines.filter((line) => efoilLineSlugs.has(line.slug));
   const bestSellers = selectedBestSellers.filter((product) => product !== null);
   const productHrefByLineSlug = Object.fromEntries(
     featuredLineProductSlugs.map(([lineSlug, productSlug]) => [lineSlug, `/products/${productSlug}`])
@@ -44,11 +47,10 @@ export default async function HomePage() {
             ))}
           </p>
         </div>
-        <LineShowcase lines={lines} productHrefByLineSlug={productHrefByLineSlug} productImageByLineSlug={productImageByLineSlug} />
+        <LineShowcase lines={efoilLines} productHrefByLineSlug={productHrefByLineSlug} productImageByLineSlug={productImageByLineSlug} />
       </section>
 
       <section id="best-sellers" className="border-y border-line bg-mist py-20 sm:py-28">
-        <span id="foils" className="block scroll-mt-24" aria-hidden="true" />
         <div className="mx-auto grid max-w-7xl gap-6 px-5 sm:px-8 lg:grid-cols-[0.34fr_0.66fr] lg:items-center lg:gap-14 lg:px-10">
           <h2 className="whitespace-nowrap text-3xl font-semibold leading-tight text-ink sm:text-5xl">{homeContent.bestSellers.title}</h2>
           <p className="text-sm leading-7 text-graphite sm:text-base lg:whitespace-nowrap">

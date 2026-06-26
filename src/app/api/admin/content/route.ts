@@ -62,6 +62,7 @@ function revalidateStorefront() {
   revalidatePath("/", "layout");
   revalidatePath("/");
   revalidatePath("/efoils/[line]", "page");
+  revalidatePath("/foils/[line]", "page");
   revalidatePath("/products/[slug]", "page");
 }
 
