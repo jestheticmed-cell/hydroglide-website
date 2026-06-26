@@ -6,6 +6,22 @@ import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Meg
 import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
 
+type ProductCategory = "efoils" | "foils";
+type ProductLineSlug = "lift-5f" | "lift-5" | "lift-x" | "boards" | "masts" | "wings";
+
+const lineOptionsByCategory: Record<ProductCategory, Array<{ label: string; value: ProductLineSlug }>> = {
+  efoils: [
+    { label: "Lift 5F", value: "lift-5f" },
+    { label: "Lift 5", value: "lift-5" },
+    { label: "Lift X", value: "lift-x" }
+  ],
+  foils: [
+    { label: "Boards", value: "boards" },
+    { label: "Masts", value: "masts" },
+    { label: "Wings", value: "wings" }
+  ]
+};
+
 type HeroSlideRow = {
   id: string;
   image: string;
@@ -18,7 +34,7 @@ type HeroSlideRow = {
 
 type ProductLineRow = {
   id: string;
-  slug: "lift-5f" | "lift-5" | "lift-x";
+  slug: ProductLineSlug;
   name: string;
   eyebrow: string;
   tagline: string;
@@ -31,8 +47,8 @@ type ProductLineRow = {
 type ProductRow = {
   id: string;
   slug: string;
-  primary_category: "efoils" | "foils";
-  line_slug: "lift-5f" | "lift-5" | "lift-x";
+  primary_category: ProductCategory;
+  line_slug: ProductLineSlug;
   name: string;
   price_cents: number;
   currency: "USD";
@@ -1090,6 +1106,19 @@ function ProductForm({
   const [uploadingSpecImage, setUploadingSpecImage] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [specImageKey, setSpecImageKey] = useState("");
+  const category = product.primary_category ?? "efoils";
+  const lineOptions = lineOptionsByCategory[category];
+
+  function updateCategory(nextCategory: ProductCategory) {
+    const nextOptions = lineOptionsByCategory[nextCategory];
+    const currentLineIsValid = nextOptions.some((option) => option.value === product.line_slug);
+
+    update({
+      ...product,
+      primary_category: nextCategory,
+      line_slug: currentLineIsValid ? product.line_slug : nextOptions[0].value
+    });
+  }
 
   async function uploadProductImages(files: FileList | null) {
     if (!files?.length) return;
@@ -1154,16 +1183,18 @@ function ProductForm({
         <label className={labelClass}>
           系列
           <select className={inputClass} value={product.line_slug} onChange={(event) => update({ ...product, line_slug: event.target.value as ProductRow["line_slug"] })}>
-            <option value="lift-5f">Lift 5F</option>
-            <option value="lift-5">Lift 5</option>
-            <option value="lift-x">Lift X</option>
+            {lineOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         <label className={labelClass}>
           一级大类目
-          <select className={inputClass} value={product.primary_category ?? "efoils"} onChange={(event) => update({ ...product, primary_category: event.target.value as ProductRow["primary_category"] })}>
+          <select className={inputClass} value={category} onChange={(event) => updateCategory(event.target.value as ProductCategory)}>
             <option value="efoils">Efoils</option>
             <option value="foils">Foils</option>
           </select>

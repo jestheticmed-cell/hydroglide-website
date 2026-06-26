@@ -9,6 +9,55 @@ export const dynamic = "force-dynamic";
 
 const TABLES = new Set(["hero_slides", "product_lines", "products", "reviews"]);
 
+const defaultProductLines: Record<
+  string,
+  {
+    id: string;
+    slug: string;
+    name: string;
+    eyebrow: string;
+    tagline: string;
+    description: string;
+    hero_images: string[];
+    sort_order: number;
+    is_active: boolean;
+  }
+> = {
+  boards: {
+    id: "line-boards",
+    slug: "boards",
+    name: "Boards",
+    eyebrow: "Foil Platform",
+    tagline: "Responsive foil boards for refined control.",
+    description: "Foil boards configured for stable stance, efficient lift, and precise water feel.",
+    hero_images: [],
+    sort_order: 30,
+    is_active: true
+  },
+  masts: {
+    id: "line-masts",
+    slug: "masts",
+    name: "Masts",
+    eyebrow: "Foil Structure",
+    tagline: "Rigid mast options for clean tracking.",
+    description: "Masts designed to balance stiffness, durability, and smooth hydrofoil response.",
+    hero_images: [],
+    sort_order: 31,
+    is_active: true
+  },
+  wings: {
+    id: "line-wings",
+    slug: "wings",
+    name: "Wings",
+    eyebrow: "Foil Lift",
+    tagline: "Wing sets tuned for lift, glide, and speed.",
+    description: "Front and rear wing options shaped for predictable lift and confident carving.",
+    hero_images: [],
+    sort_order: 32,
+    is_active: true
+  }
+};
+
 function revalidateStorefront() {
   revalidatePath("/", "layout");
   revalidatePath("/");
@@ -163,6 +212,15 @@ export async function POST(request: NextRequest) {
 
     if (!body.table || !TABLES.has(body.table) || !body.record) {
       return NextResponse.json({ error: "Invalid admin save request." }, { status: 400 });
+    }
+
+    if (body.table === "products" && typeof body.record.line_slug === "string") {
+      const defaultLine = defaultProductLines[body.record.line_slug];
+
+      if (defaultLine) {
+        const { error } = await supabase.from("product_lines").upsert(defaultLine);
+        if (error) throw error;
+      }
     }
 
     const { error } = await supabase.from(body.table).upsert(body.record);

@@ -11,7 +11,7 @@ create table if not exists public.hero_slides (
 
 create table if not exists public.product_lines (
   id text primary key,
-  slug text not null unique check (slug in ('lift-5f', 'lift-5', 'lift-x')),
+  slug text not null unique check (slug in ('lift-5f', 'lift-5', 'lift-x', 'boards', 'masts', 'wings')),
   name text not null,
   eyebrow text not null,
   tagline text not null,
@@ -55,6 +55,12 @@ alter table public.products
 
 alter table public.products
   add constraint products_primary_category_check check (primary_category in ('efoils', 'foils'));
+
+alter table public.product_lines
+  drop constraint if exists product_lines_slug_check;
+
+alter table public.product_lines
+  add constraint product_lines_slug_check check (slug in ('lift-5f', 'lift-5', 'lift-x', 'boards', 'masts', 'wings'));
 
 create table if not exists public.reviews (
   id text primary key,

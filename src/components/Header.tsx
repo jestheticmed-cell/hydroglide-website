@@ -12,16 +12,20 @@ type HeaderProps = {
   lines: ProductLine[];
 };
 
+const efoilLineSlugs = new Set(["lift-5f", "lift-5", "lift-x"]);
+
 export function Header({ lines }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<"efoils" | "foils" | null>(null);
   const pathname = usePathname();
   const { totalQuantity, openCart } = useCart();
   const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
-  const efoilItems = lines.map((line) => ({
-    href: `/efoils/${line.slug}`,
-    label: line.name.replace(/\s/g, "")
-  }));
+  const efoilItems = lines
+    .filter((line) => efoilLineSlugs.has(line.slug))
+    .map((line) => ({
+      href: `/efoils/${line.slug}`,
+      label: line.name.replace(/\s/g, "")
+    }));
   const foilItems = [
     { href: "/#foils", label: "Boards" },
     { href: "/#foils", label: "Masts" },

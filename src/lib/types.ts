@@ -1,4 +1,4 @@
-export type ProductLineSlug = "lift-5f" | "lift-5" | "lift-x";
+export type ProductLineSlug = "lift-5f" | "lift-5" | "lift-x" | "boards" | "masts" | "wings";
 
 export type ProductLine = {
   id: string;
