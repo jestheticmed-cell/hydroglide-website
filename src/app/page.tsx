@@ -1,7 +1,7 @@
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { LineShowcase } from "@/components/LineShowcase";
 import { ProductCard } from "@/components/ProductCard";
-import { getHeroSlides, getProduct, getProductLines, getReviews } from "@/lib/data";
+import { getBestSellers, getHeroSlides, getProduct, getProductLines, getReviews } from "@/lib/data";
 import { getHomeContent } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
@@ -12,15 +12,28 @@ export default async function HomePage() {
   const homeContent = await getHomeContent();
   const heroVideo = homeContent.hero.videoSrc.trim() ? homeContent.hero : undefined;
   const featuredLineProductSlugs = Object.entries(homeContent.productLines.featuredProductSlugs);
-  const [slides, lines, selectedBestSellers, selectedLineProducts, reviews] = await Promise.all([
+  const [slides, lines, selectedBestSellers, autoBestSellers, selectedLineProducts, reviews] = await Promise.all([
     getHeroSlides(),
     getProductLines(),
     Promise.all(homeContent.bestSellers.productSlugs.map((slug) => getProduct(slug))),
+    getBestSellers(),
     Promise.all(featuredLineProductSlugs.map(([, productSlug]) => getProduct(productSlug))),
     getReviews()
   ]);
   const efoilLines = lines.filter((line) => efoilLineSlugs.has(line.slug));
-  const bestSellers = selectedBestSellers.filter((product) => product !== null);
+  const bestSellersBySlug = new Map<string, NonNullable<(typeof selectedBestSellers)[number]>>();
+
+  selectedBestSellers.forEach((product) => {
+    if (product) bestSellersBySlug.set(product.slug, product);
+  });
+
+  autoBestSellers.forEach((product) => {
+    if (!bestSellersBySlug.has(product.slug)) {
+      bestSellersBySlug.set(product.slug, product);
+    }
+  });
+
+  const bestSellers = Array.from(bestSellersBySlug.values());
   const productHrefByLineSlug = Object.fromEntries(
     featuredLineProductSlugs.map(([lineSlug, productSlug]) => [lineSlug, `/products/${productSlug}`])
   );
