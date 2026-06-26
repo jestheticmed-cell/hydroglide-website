@@ -49,21 +49,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
 
       <section className="mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-10">
         <div className="border-t border-line pt-12">
-          <div className="grid gap-8 lg:grid-cols-[0.42fr_0.58fr]">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-graphite">{detailEyebrow}</p>
-              <h2 className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-4xl">{detailTitle}</h2>
-            </div>
-            <div>
-              <p className="text-base leading-8 text-graphite">{product.description}</p>
-              <ul className="mt-7 grid gap-4">
-                {product.details.map((detail) => (
-                  <li key={detail} className="border-b border-line pb-4 text-base leading-7 text-charcoal">
-                    {isImageValue(detail) ? <Image src={detail} alt="" width={900} height={560} unoptimized className="w-full bg-white object-contain" /> : detail}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-graphite">{detailEyebrow}</p>
+          <h2 className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-4xl">{detailTitle}</h2>
+          <p className="mt-7 max-w-4xl text-base leading-8 text-graphite">{product.description}</p>
+          <div className="mt-8 grid gap-5">
+            {product.details.map((detail) => (
+              <article key={detail} className="border border-line bg-white p-5 sm:p-6">
+                {isImageValue(detail) ? (
+                  <Image src={detail} alt="" width={1200} height={760} unoptimized className="mx-auto max-h-[560px] w-full object-contain" />
+                ) : (
+                  <p className="text-base leading-8 text-charcoal">{detail}</p>
+                )}
+              </article>
+            ))}
           </div>
         </div>
       </section>
@@ -72,46 +70,44 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         <div className="border-t border-line pt-12">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-graphite">{comparisonEyebrow}</p>
           <h2 className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-4xl">{comparisonTitle}</h2>
-          <div className="mt-8 overflow-x-auto border border-line bg-white">
-            <table className="w-full min-w-[760px] border-collapse text-left">
-              <thead>
-                <tr>
-                  <th className="border-b border-line px-5 py-4 text-sm font-semibold text-graphite">Parameter</th>
-                  {sameSeriesProducts.map((item) => (
-                    <th key={item.id} className="border-b border-line px-5 py-4 text-sm font-semibold text-ink">
-                      {item.name}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border-b border-line px-5 py-4 text-sm font-semibold text-graphite">Price</td>
-                  {sameSeriesProducts.map((item) => (
-                    <td key={`${item.id}-price`} className="border-b border-line px-5 py-4 text-sm text-charcoal">
-                      {formatPrice(item)}
-                    </td>
-                  ))}
-                </tr>
-                {comparisonKeys.map((key) => (
-                  <tr key={key}>
-                    <td className="border-b border-line px-5 py-4 text-sm font-semibold text-graphite">{key}</td>
-                    {sameSeriesProducts.map((item) => (
-                      <td key={`${item.id}-${key}`} className="border-b border-line px-5 py-4 text-sm text-charcoal">
-                        {item.specs[key] ? (
-                          <div className="grid gap-3">
-                            {getSpecImage(item.specs[key]) ? (
-                              <Image src={getSpecImage(item.specs[key])} alt="" width={260} height={160} unoptimized className="h-28 w-full object-contain" />
-                            ) : null}
-                            {getSpecText(item.specs[key]) ? <span>{getSpecText(item.specs[key])}</span> : null}
+          <div className="mt-8 grid gap-5">
+            {sameSeriesProducts.map((item) => (
+              <article key={item.id} className="border border-line bg-white p-5 sm:p-6">
+                <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
+                  <div className="bg-mist p-4">
+                    <Image
+                      src={item.images[0] ?? "/brand/hydroglide-logo.jpg"}
+                      alt={item.name}
+                      width={420}
+                      height={300}
+                      unoptimized
+                      className="h-48 w-full object-contain"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-semibold text-ink">{item.name}</h3>
+                    <p className="mt-2 text-base font-medium text-charcoal">{formatPrice(item)}</p>
+                    <div className="mt-5 grid gap-4">
+                      {comparisonKeys.map((key) => {
+                        const value = item.specs[key];
+                        const image = getSpecImage(value);
+                        const text = getSpecText(value);
+
+                        if (!value) return null;
+
+                        return (
+                          <div key={`${item.id}-${key}`} className="border-t border-line pt-4">
+                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-graphite">{key}</p>
+                            {image ? <Image src={image} alt="" width={520} height={320} unoptimized className="mt-3 max-h-72 w-full object-contain" /> : null}
+                            {text ? <p className="mt-3 text-sm leading-7 text-charcoal">{text}</p> : null}
                           </div>
-                        ) : "-"}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
           </div>
         </div>
       </section>
