@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Image from "next/image";
 import { ProductDetailHero } from "@/components/ProductDetailHero";
 import { formatPrice, getProduct, getProductsByLine } from "@/lib/data";
 
@@ -9,6 +10,10 @@ type ProductDetailPageProps = {
     slug: string;
   }>;
 };
+
+function isImageValue(value: string) {
+  return /^https?:\/\//.test(value) && (/\.(avif|gif|jpe?g|png|webp)(\?.*)?$/i.test(value) || value.includes("/storage/v1/object/public/"));
+}
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
   const { slug } = await params;
@@ -41,7 +46,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               <ul className="mt-7 grid gap-4">
                 {product.details.map((detail) => (
                   <li key={detail} className="border-b border-line pb-4 text-base leading-7 text-charcoal">
-                    {detail}
+                    {isImageValue(detail) ? <Image src={detail} alt="" width={900} height={560} unoptimized className="w-full bg-white object-contain" /> : detail}
                   </li>
                 ))}
               </ul>
@@ -80,7 +85,11 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     <td className="border-b border-line px-5 py-4 text-sm font-semibold text-graphite">{key}</td>
                     {sameSeriesProducts.map((item) => (
                       <td key={`${item.id}-${key}`} className="border-b border-line px-5 py-4 text-sm text-charcoal">
-                        {item.specs[key] ?? "-"}
+                        {item.specs[key] && isImageValue(item.specs[key]) ? (
+                          <Image src={item.specs[key]} alt="" width={260} height={160} unoptimized className="h-28 w-full object-contain" />
+                        ) : (
+                          item.specs[key] ?? "-"
+                        )}
                       </td>
                     ))}
                   </tr>

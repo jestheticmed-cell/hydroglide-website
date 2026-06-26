@@ -1086,7 +1086,10 @@ function ProductForm({
   uploadFile: (file: File) => Promise<string>;
 }) {
   const [uploadingProductImages, setUploadingProductImages] = useState(false);
+  const [uploadingDetailImages, setUploadingDetailImages] = useState(false);
+  const [uploadingSpecImage, setUploadingSpecImage] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [specImageKey, setSpecImageKey] = useState("");
 
   async function uploadProductImages(files: FileList | null) {
     if (!files?.length) return;
@@ -1101,6 +1104,45 @@ function ProductForm({
       setUploadError(error instanceof Error ? error.message : "图片上传失败");
     } finally {
       setUploadingProductImages(false);
+    }
+  }
+
+  async function uploadDetailImages(files: FileList | null) {
+    if (!files?.length) return;
+
+    setUploadingDetailImages(true);
+    setUploadError("");
+
+    try {
+      const urls = await Promise.all(Array.from(files).map((file) => uploadFile(file)));
+      update({ ...product, details: [...product.details, ...urls] });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "图片上传失败");
+    } finally {
+      setUploadingDetailImages(false);
+    }
+  }
+
+  async function uploadSpecImage(files: FileList | null) {
+    const file = files?.[0];
+    const key = specImageKey.trim();
+
+    if (!file || !key) {
+      setUploadError("请先填写规格参数图片的参数名");
+      return;
+    }
+
+    setUploadingSpecImage(true);
+    setUploadError("");
+
+    try {
+      const url = await uploadFile(file);
+      update({ ...product, specs: { ...product.specs, [key]: url } });
+      setSpecImageKey("");
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "图片上传失败");
+    } finally {
+      setUploadingSpecImage(false);
     }
   }
 
@@ -1136,6 +1178,7 @@ function ProductForm({
       <div className="grid gap-4 md:grid-cols-2">
         <div className={labelClass}>
           产品图片
+          <p className="text-xs font-normal leading-5 text-slate-500">建议图片尺寸：2000 x 2000px 方图，透明底 WebP/PNG 优先；列表和详情页会自动适配。</p>
           <div className="flex flex-wrap items-center gap-3">
             <label className={`${buttonClass} cursor-pointer`}>
               <ImagePlus className="h-4 w-4" />
@@ -1182,14 +1225,59 @@ function ProductForm({
           update(product);
         }
       }} /></label>
-      <label className={labelClass}>详情卖点（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.details)} onChange={(event) => update({ ...product, details: linesToArray(event.target.value) })} /></label>
+      <div className={labelClass}>
+        详情卖点
+        <p className="text-xs font-normal leading-5 text-slate-500">可输入文字，每行一个；也可上传图片。建议图片尺寸：1600 x 1000px 或 4:3 横图，WebP/JPG/PNG。</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className={`${buttonClass} cursor-pointer`}>
+            <ImagePlus className="h-4 w-4" />
+            {uploadingDetailImages ? "上传中..." : "上传详情图片"}
+            <input
+              className="sr-only"
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={saving || uploadingDetailImages}
+              onChange={(event) => {
+                void uploadDetailImages(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+          <span className="text-xs text-slate-500">上传后会作为详情卖点图片追加到列表</span>
+        </div>
+        {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+        <textarea className={inputClass} rows={5} value={arrayToLines(product.details)} onChange={(event) => update({ ...product, details: linesToArray(event.target.value) })} />
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <TextBlock label="详情区眉标" value={product.detail_eyebrow} onChange={(value) => update({ ...product, detail_eyebrow: value })} />
         <TextBlock label="详情区标题" value={product.detail_title} onChange={(value) => update({ ...product, detail_title: value })} />
         <TextBlock label="对比区眉标" value={product.comparison_eyebrow} onChange={(value) => update({ ...product, comparison_eyebrow: value })} />
         <TextBlock label="对比区标题" value={product.comparison_title} onChange={(value) => update({ ...product, comparison_title: value })} />
       </div>
-      <label className={labelClass}>规格参数（每行 key: value）<textarea className={inputClass} rows={6} value={specsToText(product.specs)} onChange={(event) => update({ ...product, specs: textToSpecs(event.target.value) })} /></label>
+      <div className={labelClass}>
+        规格参数（每行 key: value）
+        <p className="text-xs font-normal leading-5 text-slate-500">可填写文字参数，也可上传参数图片。建议图片尺寸：1200 x 800px 或 3:2 横图，表格内会自动缩略展示。</p>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <input className={inputClass} value={specImageKey} onChange={(event) => setSpecImageKey(event.target.value)} placeholder="图片参数名，例如 Battery Diagram" />
+          <label className={`${buttonClass} cursor-pointer justify-center`}>
+            <ImagePlus className="h-4 w-4" />
+            {uploadingSpecImage ? "上传中..." : "上传参数图片"}
+            <input
+              className="sr-only"
+              type="file"
+              accept="image/*"
+              disabled={saving || uploadingSpecImage}
+              onChange={(event) => {
+                void uploadSpecImage(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+        <textarea className={inputClass} rows={6} value={specsToText(product.specs)} onChange={(event) => update({ ...product, specs: textToSpecs(event.target.value) })} />
+      </div>
       <button type="button" disabled={saving} onClick={save} className={buttonClass}><Save className="h-4 w-4" /> 保存产品</button>
     </div>
   );
