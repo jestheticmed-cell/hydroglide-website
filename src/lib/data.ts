@@ -105,6 +105,20 @@ const mapHeroSlide = (row: HeroSlideRow): HeroSlide => ({
   copy: row.copy
 });
 
+function mergeProductLines(rows: ProductLineRow[]) {
+  const merged = new Map<ProductLineSlug, ProductLine>();
+
+  productLines.forEach((line) => {
+    merged.set(line.slug, line);
+  });
+
+  rows.map(mapLine).forEach((line) => {
+    merged.set(line.slug, line);
+  });
+
+  return Array.from(merged.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 export async function getHeroSlides(): Promise<HeroSlide[]> {
   noStore();
   const supabase = getSupabaseClient();
@@ -132,7 +146,7 @@ export async function getProductLines(): Promise<ProductLine[]> {
     .order("sort_order");
 
   if (error || !data?.length) return productLines;
-  return (data as ProductLineRow[]).map(mapLine);
+  return mergeProductLines(data as ProductLineRow[]);
 }
 
 export async function getProductLine(slug: string): Promise<ProductLine | null> {
