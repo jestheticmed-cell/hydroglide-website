@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
 import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
@@ -403,6 +404,15 @@ export function AdminConsole() {
     }
   }
 
+  async function uploadFile(file: File) {
+    const body = new FormData();
+    body.set("file", file);
+    const response = await fetch("/api/admin/upload", { method: "POST", headers, body });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error ?? "图片上传失败");
+    return String(result.url);
+  }
+
   async function updateSupportInbox(action: "reply" | "mark_read" | "archive" | "reopen", conversationId: string, message?: string) {
     setSupportLoading(true);
     setError("");
@@ -668,7 +678,13 @@ export function AdminConsole() {
 
           {activeModule === "products" && activeProductSection === "products" && product ? (
             <RecordEditor items={data?.products ?? []} selected={selected.products} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, products: index }))}>
-              <ProductForm product={product} saving={saving} update={(next) => updateCollection("products", selected.products, next)} save={() => saveRecord("products", product, "产品已保存")} />
+              <ProductForm
+                product={product}
+                saving={saving}
+                update={(next) => updateCollection("products", selected.products, next)}
+                save={() => saveRecord("products", product, "产品已保存")}
+                uploadFile={uploadFile}
+              />
             </RecordEditor>
           ) : null}
 
@@ -1056,7 +1072,38 @@ function NumberInput({ value, onChange }: { value: number; onChange: (value: num
   );
 }
 
-function ProductForm({ product, saving, update, save }: { product: ProductRow; saving: boolean; update: (product: ProductRow) => void; save: () => void }) {
+function ProductForm({
+  product,
+  saving,
+  update,
+  save,
+  uploadFile
+}: {
+  product: ProductRow;
+  saving: boolean;
+  update: (product: ProductRow) => void;
+  save: () => void;
+  uploadFile: (file: File) => Promise<string>;
+}) {
+  const [uploadingProductImages, setUploadingProductImages] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function uploadProductImages(files: FileList | null) {
+    if (!files?.length) return;
+
+    setUploadingProductImages(true);
+    setUploadError("");
+
+    try {
+      const urls = await Promise.all(Array.from(files).map((file) => uploadFile(file)));
+      update({ ...product, images: [...product.images, ...urls] });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "图片上传失败");
+    } finally {
+      setUploadingProductImages(false);
+    }
+  }
+
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-3">
@@ -1087,7 +1134,45 @@ function ProductForm({ product, saving, update, save }: { product: ProductRow; s
       <label className={labelClass}>产品摘要<textarea className={inputClass} rows={3} value={product.summary} onChange={(event) => update({ ...product, summary: event.target.value })} /></label>
       <label className={labelClass}>产品描述<textarea className={inputClass} rows={5} value={product.description} onChange={(event) => update({ ...product, description: event.target.value })} /></label>
       <div className="grid gap-4 md:grid-cols-2">
-        <label className={labelClass}>产品图片 URL（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.images)} onChange={(event) => update({ ...product, images: linesToArray(event.target.value) })} /></label>
+        <div className={labelClass}>
+          产品图片
+          <div className="flex flex-wrap items-center gap-3">
+            <label className={`${buttonClass} cursor-pointer`}>
+              <ImagePlus className="h-4 w-4" />
+              {uploadingProductImages ? "上传中..." : "上传图片"}
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={saving || uploadingProductImages}
+                onChange={(event) => {
+                  void uploadProductImages(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
+            <span className="text-xs text-slate-500">上传后会自动写入下方 URL 列表</span>
+          </div>
+          {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+          {product.images.length ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {product.images.map((image, index) => (
+                <div key={`${image}-${index}`} className="overflow-hidden border border-slate-200 bg-white">
+                  <Image src={image} alt="" width={240} height={160} unoptimized className="h-28 w-full object-contain bg-slate-50" />
+                  <button
+                    type="button"
+                    className="w-full border-t border-slate-200 px-2 py-2 text-xs text-slate-600 transition hover:bg-slate-50 hover:text-red-600"
+                    onClick={() => update({ ...product, images: product.images.filter((_, itemIndex) => itemIndex !== index) })}
+                  >
+                    删除
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <textarea className={inputClass} rows={5} value={arrayToLines(product.images)} onChange={(event) => update({ ...product, images: linesToArray(event.target.value) })} />
+        </div>
         <label className={labelClass}>颜色选项（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.color_options)} onChange={(event) => update({ ...product, color_options: linesToArray(event.target.value) })} /></label>
       </div>
       <label className={labelClass}>颜色图片 JSON<textarea className={inputClass} rows={5} value={JSON.stringify(product.color_images ?? {}, null, 2)} onChange={(event) => {
