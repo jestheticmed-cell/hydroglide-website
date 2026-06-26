@@ -42,6 +42,8 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const detailTitle = product.detailTitle ?? "Built for refined electric flight.";
   const comparisonEyebrow = product.comparisonEyebrow ?? "Series Comparison";
   const comparisonTitle = product.comparisonTitle ?? "Compare models in this series.";
+  const detailTextClass = "w-full whitespace-pre-line break-words text-base leading-8 text-charcoal sm:text-lg sm:leading-9";
+  const descriptionTextClass = "w-full whitespace-pre-line break-words text-lg leading-9 text-charcoal sm:text-xl sm:leading-10";
 
   return (
     <main className="bg-[#f3f3f3]">
@@ -51,14 +53,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         <div className="border-t border-line pt-12">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-graphite">{detailEyebrow}</p>
           <h2 className="mt-4 text-3xl font-semibold leading-tight text-ink sm:text-4xl">{detailTitle}</h2>
-          <p className="mt-7 max-w-4xl text-base leading-8 text-graphite">{product.description}</p>
+          <p className={`mt-7 ${descriptionTextClass}`}>{product.description}</p>
           <div className="mt-10 grid gap-12">
             {product.details.map((detail) => (
               <article key={detail}>
                 {isImageValue(detail) ? (
                   <Image src={detail} alt="" width={1400} height={860} unoptimized className="mx-auto max-h-[640px] w-full object-contain" />
                 ) : (
-                  <p className="max-w-5xl text-base leading-8 text-charcoal sm:text-lg sm:leading-9">{detail}</p>
+                  <p className={detailTextClass}>{detail}</p>
                 )}
               </article>
             ))}
@@ -85,7 +87,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                       <section key={`${item.id}-${key}`} className="grid gap-4">
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-graphite">{key}</p>
                         {image ? <Image src={image} alt="" width={900} height={560} unoptimized className="max-h-[420px] w-full object-contain" /> : null}
-                        {text ? <p className="max-w-5xl text-base leading-8 text-charcoal">{text}</p> : null}
+                        {text ? <p className={detailTextClass}>{text}</p> : null}
                       </section>
                     );
                   })}
