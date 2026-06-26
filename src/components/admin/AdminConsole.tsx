@@ -1013,9 +1013,46 @@ function ToggleRow({ active, order, onActive, onOrder }: { active: boolean; orde
       </label>
       <label className={labelClass}>
         排序
-        <input className={inputClass} type="number" value={order} onChange={(event) => onOrder(Number(event.target.value))} />
+        <NumberInput value={order} onChange={onOrder} />
       </label>
     </div>
+  );
+}
+
+function NumberInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  return (
+    <input
+      className={inputClass}
+      inputMode="numeric"
+      type="text"
+      value={draft}
+      onFocus={() => {
+        if (draft === "0") {
+          setDraft("");
+        }
+      }}
+      onBlur={() => {
+        if (!draft.trim()) {
+          setDraft("0");
+          onChange(0);
+        }
+      }}
+      onChange={(event) => {
+        const nextValue = event.target.value.replace(/\D/g, "");
+
+        setDraft(nextValue);
+
+        if (nextValue) {
+          onChange(Number(nextValue));
+        }
+      }}
+    />
   );
 }
 
@@ -1042,9 +1079,9 @@ function ProductForm({ product, saving, update, save }: { product: ProductRow; s
             <option value="foils">Foils</option>
           </select>
         </label>
-        <label className={labelClass}>价格（美分）<input className={inputClass} type="number" value={product.price_cents} onChange={(event) => update({ ...product, price_cents: Number(event.target.value) })} /></label>
+        <label className={labelClass}>价格（美分）<NumberInput value={product.price_cents} onChange={(value) => update({ ...product, price_cents: value })} /></label>
         <label className={labelClass}>状态<select className={inputClass} value={product.status} onChange={(event) => update({ ...product, status: event.target.value as ProductRow["status"] })}><option value="draft">草稿</option><option value="published">发布</option></select></label>
-        <label className={labelClass}>排序<input className={inputClass} type="number" value={product.sort_order} onChange={(event) => update({ ...product, sort_order: Number(event.target.value) })} /></label>
+        <label className={labelClass}>排序<NumberInput value={product.sort_order} onChange={(value) => update({ ...product, sort_order: value })} /></label>
       </div>
       <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={product.is_best_seller} onChange={(event) => update({ ...product, is_best_seller: event.target.checked })} /> 设为热卖</label>
       <label className={labelClass}>产品摘要<textarea className={inputClass} rows={3} value={product.summary} onChange={(event) => update({ ...product, summary: event.target.value })} /></label>

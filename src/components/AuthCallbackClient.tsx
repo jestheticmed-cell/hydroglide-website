@@ -30,6 +30,7 @@ export function AuthCallbackClient() {
       const hashAccessToken = hashParams.get("access_token");
       const hashRefreshToken = hashParams.get("refresh_token");
       const oauthError = params.get("error") || hashParams.get("error");
+      const provider = params.get("provider") === "email" ? "email" : "google";
       const nextPath = getSafeNextPath(params.get("next") || hashParams.get("next"));
       const loginPath = `/login?next=${encodeURIComponent(nextPath)}`;
       const supabase = getSupabaseAuthClient();
@@ -76,7 +77,7 @@ export function AuthCallbackClient() {
           Authorization: `Bearer ${data.session.access_token}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ provider: "google" })
+        body: JSON.stringify({ provider })
       });
 
       if (!response.ok) {

@@ -62,7 +62,7 @@ export function LoginPanel() {
     if (!normalizedEmail || isEmailLoading) return;
 
     setIsEmailLoading(true);
-    setEmailNotice("Sending verification code...");
+    setEmailNotice("Sending secure sign-in email...");
     const supabase = getSupabaseAuthClient();
 
     if (!supabase) {
@@ -76,7 +76,8 @@ export function LoginPanel() {
       .signInWithOtp({
         email: normalizedEmail,
         options: {
-          shouldCreateUser: true
+          shouldCreateUser: true,
+          emailRedirectTo: `${getAuthRedirectOrigin()}/auth/callback?next=${encodeURIComponent(nextPath)}&provider=email`
         }
       })
       .catch((requestError: Error) => ({ data: null, error: requestError }));
@@ -89,7 +90,7 @@ export function LoginPanel() {
     }
 
     setEmail(normalizedEmail);
-    setEmailNotice("We sent a verification code to your email.");
+    setEmailNotice("We sent a sign-in link to your email. If the email includes a code, you can enter it here.");
     setStep("code");
     setIsEmailLoading(false);
   }
@@ -277,8 +278,10 @@ export function LoginPanel() {
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Change email
           </button>
-          <h2 className="text-[22px] font-semibold text-ink">Enter verification code</h2>
-          <p className="mt-2 text-[15px] leading-6 text-graphite">We sent a code to {email}.</p>
+          <h2 className="text-[22px] font-semibold text-ink">Check your email</h2>
+          <p className="mt-2 text-[15px] leading-6 text-graphite">
+            Click the sign-in link sent to {email}. If your email includes a code, enter it below.
+          </p>
 
           <label className="mt-5 block">
             <span className="sr-only">Verification code</span>
