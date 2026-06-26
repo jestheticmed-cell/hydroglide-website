@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { ProductDetailHero } from "@/components/ProductDetailHero";
 import { formatPrice, getProduct, getProductsByLine } from "@/lib/data";
+import type { ProductSpecValue } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,18 @@ type ProductDetailPageProps = {
 
 function isImageValue(value: string) {
   return /^https?:\/\//.test(value) && (/\.(avif|gif|jpe?g|png|webp)(\?.*)?$/i.test(value) || value.includes("/storage/v1/object/public/"));
+}
+
+function getSpecText(value: ProductSpecValue | undefined) {
+  if (!value) return "";
+  if (typeof value === "string") return isImageValue(value) ? "" : value;
+  return value.text ?? "";
+}
+
+function getSpecImage(value: ProductSpecValue | undefined) {
+  if (!value) return "";
+  if (typeof value === "string") return isImageValue(value) ? value : "";
+  return value.image ?? "";
 }
 
 export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
@@ -85,11 +98,14 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                     <td className="border-b border-line px-5 py-4 text-sm font-semibold text-graphite">{key}</td>
                     {sameSeriesProducts.map((item) => (
                       <td key={`${item.id}-${key}`} className="border-b border-line px-5 py-4 text-sm text-charcoal">
-                        {item.specs[key] && isImageValue(item.specs[key]) ? (
-                          <Image src={item.specs[key]} alt="" width={260} height={160} unoptimized className="h-28 w-full object-contain" />
-                        ) : (
-                          item.specs[key] ?? "-"
-                        )}
+                        {item.specs[key] ? (
+                          <div className="grid gap-3">
+                            {getSpecImage(item.specs[key]) ? (
+                              <Image src={getSpecImage(item.specs[key])} alt="" width={260} height={160} unoptimized className="h-28 w-full object-contain" />
+                            ) : null}
+                            {getSpecText(item.specs[key]) ? <span>{getSpecText(item.specs[key])}</span> : null}
+                          </div>
+                        ) : "-"}
                       </td>
                     ))}
                   </tr>

@@ -1,5 +1,7 @@
 export type ProductLineSlug = "lift-5f" | "lift-5" | "lift-x" | "boards" | "masts" | "wings";
 
+export type ProductSpecValue = string | { text?: string; image?: string };
+
 export type ProductLine = {
   id: string;
   slug: ProductLineSlug;
@@ -28,7 +30,7 @@ export type Product = {
   detailTitle?: string;
   comparisonEyebrow?: string;
   comparisonTitle?: string;
-  specs: Record<string, string>;
+  specs: Record<string, ProductSpecValue>;
   isBestSeller: boolean;
   sortOrder: number;
 };

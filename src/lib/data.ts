@@ -2,7 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { heroSlides, productLines, products, reviews } from "./fallback-data";
 import { formatCents } from "./format";
 import { getSupabaseClient } from "./supabase";
-import type { HeroSlide, Product, ProductLine, ProductLineSlug, Review } from "./types";
+import type { HeroSlide, Product, ProductLine, ProductLineSlug, ProductSpecValue, Review } from "./types";
 
 type ProductLineRow = {
   id: string;
@@ -32,7 +32,7 @@ type ProductRow = {
   detail_title?: string;
   comparison_eyebrow?: string;
   comparison_title?: string;
-  specs: Record<string, string>;
+  specs: Record<string, ProductSpecValue>;
   is_best_seller: boolean;
   sort_order: number;
 };

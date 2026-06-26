@@ -8,6 +8,7 @@ import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data
 
 type ProductCategory = "efoils" | "foils";
 type ProductLineSlug = "lift-5f" | "lift-5" | "lift-x" | "boards" | "masts" | "wings";
+type ProductSpecValue = string | { text?: string; image?: string };
 
 const lineOptionsByCategory: Record<ProductCategory, Array<{ label: string; value: ProductLineSlug }>> = {
   efoils: [
@@ -62,7 +63,7 @@ type ProductRow = {
   detail_title: string;
   comparison_eyebrow: string;
   comparison_title: string;
-  specs: Record<string, string>;
+  specs: Record<string, ProductSpecValue>;
   is_best_seller: boolean;
   sort_order: number;
   status: "draft" | "published";
@@ -235,11 +236,45 @@ function arrayToLines(value?: string[]) {
   return (value ?? []).join("\n");
 }
 
-function specsToText(value?: Record<string, string>) {
-  return Object.entries(value ?? {}).map(([key, item]) => `${key}: ${item}`).join("\n");
+function isImageValue(value: string) {
+  return /^https?:\/\//.test(value) && (/\.(avif|gif|jpe?g|png|webp)(\?.*)?$/i.test(value) || value.includes("/storage/v1/object/public/"));
 }
 
-function textToSpecs(value: string) {
+function getSpecText(value: ProductSpecValue | undefined) {
+  if (!value) return "";
+  if (typeof value === "string") return isImageValue(value) ? "" : value;
+  return value.text ?? "";
+}
+
+function getSpecImage(value: ProductSpecValue | undefined) {
+  if (!value) return "";
+  if (typeof value === "string") return isImageValue(value) ? value : "";
+  return value.image ?? "";
+}
+
+function setSpecTextValue(current: ProductSpecValue | undefined, text: string): ProductSpecValue {
+  const image = getSpecImage(current);
+  if (image && text) return { text, image };
+  if (image) return { image };
+  return text;
+}
+
+function setSpecImageValue(current: ProductSpecValue | undefined, image: string): ProductSpecValue {
+  const text = getSpecText(current);
+  return text ? { text, image } : { image };
+}
+
+function specsToText(value?: Record<string, ProductSpecValue>) {
+  return Object.entries(value ?? {})
+    .map(([key, item]) => {
+      const text = getSpecText(item);
+      return text ? `${key}: ${text}` : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function textToKeyValues(value: string) {
   return Object.fromEntries(
     value
       .split("\n")
@@ -250,7 +285,24 @@ function textToSpecs(value: string) {
         return [key.trim(), rest.join(":").trim()];
       })
       .filter(([key, item]) => key && item)
-  );
+  ) as Record<string, string>;
+}
+
+function textToSpecs(value: string, current: Record<string, ProductSpecValue> = {}) {
+  const nextTextEntries = textToKeyValues(value);
+
+  const nextSpecs: Record<string, ProductSpecValue> = {};
+
+  Object.entries(current).forEach(([key, item]) => {
+    const image = getSpecImage(item);
+    if (image) nextSpecs[key] = { image };
+  });
+
+  Object.entries(nextTextEntries).forEach(([key, text]) => {
+    nextSpecs[key] = setSpecTextValue(nextSpecs[key], text);
+  });
+
+  return nextSpecs;
 }
 
 function uid(prefix: string, seed: string) {
@@ -650,8 +702,8 @@ export function AdminConsole() {
                 <TextBlock label="热卖标题" value={data.homeContent.bestSellers.title} onChange={(value) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, title: value } })} />
               </div>
               <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
-              <label className={labelClass}>首页系列推荐商品（每行 系列slug: 产品slug）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.featuredProductSlugs)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, featuredProductSlugs: textToSpecs(event.target.value) } })} /></label>
-              <label className={labelClass}>系列页视频地址（每行 系列slug: 视频URL）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.heroVideos)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, heroVideos: textToSpecs(event.target.value) } })} /></label>
+              <label className={labelClass}>首页系列推荐商品（每行 系列slug: 产品slug）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.featuredProductSlugs)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, featuredProductSlugs: textToKeyValues(event.target.value) } })} /></label>
+              <label className={labelClass}>系列页视频地址（每行 系列slug: 视频URL）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.heroVideos)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, heroVideos: textToKeyValues(event.target.value) } })} /></label>
               <label className={labelClass}>热卖产品 Slug（每行一个）<textarea className={inputClass} rows={4} value={arrayToLines(data.homeContent.bestSellers.productSlugs)} onChange={(event) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, productSlugs: linesToArray(event.target.value) } })} /></label>
               <div className="grid gap-4 md:grid-cols-2">
                 <TextBlock label="评价区标题" value={data.homeContent.reviews.title} onChange={(value) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, title: value } })} />
@@ -1102,9 +1154,12 @@ function ProductForm({
   uploadFile: (file: File) => Promise<string>;
 }) {
   const [uploadingProductImages, setUploadingProductImages] = useState(false);
+  const [uploadingColorImages, setUploadingColorImages] = useState(false);
   const [uploadingDetailImages, setUploadingDetailImages] = useState(false);
   const [uploadingSpecImage, setUploadingSpecImage] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [colorImageKey, setColorImageKey] = useState("");
+  const [detailText, setDetailText] = useState("");
   const [specImageKey, setSpecImageKey] = useState("");
   const category = product.primary_category ?? "efoils";
   const lineOptions = lineOptionsByCategory[category];
@@ -1152,6 +1207,35 @@ function ProductForm({
     }
   }
 
+  async function uploadColorImages(files: FileList | null) {
+    const color = colorImageKey.trim() || product.color_options[0];
+
+    if (!files?.length || !color) {
+      setUploadError("请先填写或选择颜色名称");
+      return;
+    }
+
+    setUploadingColorImages(true);
+    setUploadError("");
+
+    try {
+      const urls = await Promise.all(Array.from(files).map((file) => uploadFile(file)));
+      update({
+        ...product,
+        color_options: product.color_options.includes(color) ? product.color_options : [...product.color_options, color],
+        color_images: {
+          ...(product.color_images ?? {}),
+          [color]: [...(product.color_images?.[color] ?? []), ...urls]
+        }
+      });
+      setColorImageKey(color);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "图片上传失败");
+    } finally {
+      setUploadingColorImages(false);
+    }
+  }
+
   async function uploadSpecImage(files: FileList | null) {
     const file = files?.[0];
     const key = specImageKey.trim();
@@ -1166,7 +1250,7 @@ function ProductForm({
 
     try {
       const url = await uploadFile(file);
-      update({ ...product, specs: { ...product.specs, [key]: url } });
+      update({ ...product, specs: { ...product.specs, [key]: setSpecImageValue(product.specs[key], url) } });
       setSpecImageKey("");
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "图片上传失败");
@@ -1249,17 +1333,102 @@ function ProductForm({
         </div>
         <label className={labelClass}>颜色选项（每行一个）<textarea className={inputClass} rows={5} value={arrayToLines(product.color_options)} onChange={(event) => update({ ...product, color_options: linesToArray(event.target.value) })} /></label>
       </div>
-      <label className={labelClass}>颜色图片 JSON<textarea className={inputClass} rows={5} value={JSON.stringify(product.color_images ?? {}, null, 2)} onChange={(event) => {
-        try {
-          update({ ...product, color_images: JSON.parse(event.target.value) as Record<string, string[]> });
-        } catch {
-          update(product);
-        }
-      }} /></label>
+      <div className={labelClass}>
+        颜色图片
+        <p className="text-xs font-normal leading-5 text-slate-500">先在颜色选项中填写颜色名，再选择对应颜色上传图片。建议图片尺寸：2000 x 2000px 方图，透明底 WebP/PNG 优先。</p>
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <input
+            className={inputClass}
+            list="product-color-options"
+            value={colorImageKey}
+            onChange={(event) => setColorImageKey(event.target.value)}
+            placeholder={product.color_options[0] ? `颜色名称，例如 ${product.color_options[0]}` : "颜色名称，例如 Blue"}
+          />
+          <datalist id="product-color-options">
+            {product.color_options.map((color) => (
+              <option key={color} value={color} />
+            ))}
+          </datalist>
+          <label className={`${buttonClass} cursor-pointer justify-center`}>
+            <ImagePlus className="h-4 w-4" />
+            {uploadingColorImages ? "上传中..." : "上传颜色图片"}
+            <input
+              className="sr-only"
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={saving || uploadingColorImages}
+              onChange={(event) => {
+                void uploadColorImages(event.target.files);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+        {Object.entries(product.color_images ?? {}).length ? (
+          <div className="grid gap-4">
+            {Object.entries(product.color_images ?? {}).map(([color, images]) => (
+              <div key={color} className="border border-slate-200 bg-white p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-slate-800">{color}</span>
+                  <button
+                    type="button"
+                    className="text-xs text-slate-500 transition hover:text-red-600"
+                    onClick={() => {
+                      const next = { ...(product.color_images ?? {}) };
+                      delete next[color];
+                      update({ ...product, color_images: next });
+                    }}
+                  >
+                    删除该颜色图片组
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+                  {images.map((image, index) => (
+                    <div key={`${color}-${image}-${index}`} className="overflow-hidden border border-slate-200 bg-white">
+                      <Image src={image} alt="" width={180} height={120} unoptimized className="h-24 w-full bg-slate-50 object-contain" />
+                      <button
+                        type="button"
+                        className="w-full border-t border-slate-200 px-2 py-2 text-xs text-slate-600 transition hover:bg-slate-50 hover:text-red-600"
+                        onClick={() => {
+                          const nextImages = images.filter((_, itemIndex) => itemIndex !== index);
+                          const next = { ...(product.color_images ?? {}) };
+                          if (nextImages.length) {
+                            next[color] = nextImages;
+                          } else {
+                            delete next[color];
+                          }
+                          update({ ...product, color_images: next });
+                        }}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
       <div className={labelClass}>
         详情卖点
         <p className="text-xs font-normal leading-5 text-slate-500">可输入文字，每行一个；也可上传图片。建议图片尺寸：1600 x 1000px 或 4:3 横图，WebP/JPG/PNG。</p>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <input className={inputClass} value={detailText} onChange={(event) => setDetailText(event.target.value)} placeholder="输入一条文字卖点，例如 Quiet electric propulsion" />
+          <button
+            type="button"
+            className={buttonClass}
+            onClick={() => {
+              const next = detailText.trim();
+              if (!next) return;
+              update({ ...product, details: [...product.details, next] });
+              setDetailText("");
+            }}
+          >
+            <Plus className="h-4 w-4" /> 添加文字
+          </button>
           <label className={`${buttonClass} cursor-pointer`}>
             <ImagePlus className="h-4 w-4" />
             {uploadingDetailImages ? "上传中..." : "上传详情图片"}
@@ -1275,9 +1444,28 @@ function ProductForm({
               }}
             />
           </label>
-          <span className="text-xs text-slate-500">上传后会作为详情卖点图片追加到列表</span>
         </div>
         {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
+        {product.details.length ? (
+          <div className="grid gap-3">
+            {product.details.map((detail, index) => (
+              <div key={`${detail}-${index}`} className="flex items-start justify-between gap-3 border border-slate-200 bg-white p-3">
+                {isImageValue(detail) ? (
+                  <Image src={detail} alt="" width={220} height={140} unoptimized className="h-28 w-44 bg-slate-50 object-contain" />
+                ) : (
+                  <p className="text-sm leading-6 text-slate-700">{detail}</p>
+                )}
+                <button
+                  type="button"
+                  className="shrink-0 text-xs text-slate-500 transition hover:text-red-600"
+                  onClick={() => update({ ...product, details: product.details.filter((_, itemIndex) => itemIndex !== index) })}
+                >
+                  删除
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <textarea className={inputClass} rows={5} value={arrayToLines(product.details)} onChange={(event) => update({ ...product, details: linesToArray(event.target.value) })} />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
@@ -1307,7 +1495,37 @@ function ProductForm({
           </label>
         </div>
         {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
-        <textarea className={inputClass} rows={6} value={specsToText(product.specs)} onChange={(event) => update({ ...product, specs: textToSpecs(event.target.value) })} />
+        {Object.entries(product.specs ?? {}).length ? (
+          <div className="grid gap-3">
+            {Object.entries(product.specs ?? {}).map(([key, item]) => {
+              const text = getSpecText(item);
+              const image = getSpecImage(item);
+
+              return (
+                <div key={key} className="grid gap-3 border border-slate-200 bg-white p-3 md:grid-cols-[220px_1fr_auto]">
+                  <div className="text-sm font-semibold text-slate-800">{key}</div>
+                  <div className="grid gap-2 text-sm leading-6 text-slate-700">
+                    {text ? <p>{text}</p> : null}
+                    {image ? <Image src={image} alt="" width={260} height={160} unoptimized className="h-28 w-48 bg-slate-50 object-contain" /> : null}
+                    {!text && !image ? <span className="text-slate-400">空参数</span> : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-xs text-slate-500 transition hover:text-red-600"
+                    onClick={() => {
+                      const next = { ...product.specs };
+                      delete next[key];
+                      update({ ...product, specs: next });
+                    }}
+                  >
+                    删除
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+        <textarea className={inputClass} rows={6} value={specsToText(product.specs)} onChange={(event) => update({ ...product, specs: textToSpecs(event.target.value, product.specs) })} />
       </div>
       <button type="button" disabled={saving} onClick={save} className={buttonClass}><Save className="h-4 w-4" /> 保存产品</button>
     </div>
