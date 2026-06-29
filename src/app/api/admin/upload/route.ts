@@ -24,11 +24,14 @@ export async function POST(request: NextRequest) {
     const file = formData.get("file");
 
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Upload a valid image file." }, { status: 400 });
+      return NextResponse.json({ error: "Upload a valid asset file." }, { status: 400 });
     }
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Only image uploads are supported." }, { status: 400 });
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+
+    if (!isImage && !isVideo) {
+      return NextResponse.json({ error: "Only image or video uploads are supported." }, { status: 400 });
     }
 
     await supabase.storage.createBucket(BUCKET, { public: true }).catch(() => undefined);
@@ -45,6 +48,6 @@ export async function POST(request: NextRequest) {
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     return NextResponse.json({ url: data.publicUrl, path });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to upload image." }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to upload asset." }, { status: 500 });
   }
 }

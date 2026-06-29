@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { CategoryHero } from "@/components/CategoryHero";
 import { ProductCard } from "@/components/ProductCard";
 import { getProductLine, getProductsByLine } from "@/lib/data";
+import { getHomeContent } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,12 @@ export default async function FoilListPage({ params }: FoilListPageProps) {
     notFound();
   }
 
-  const products = await getProductsByLine(line.slug);
+  const [products, homeContent] = await Promise.all([getProductsByLine(line.slug), getHomeContent()]);
+  const videoSrc = homeContent.productLines.heroVideos[line.slug as keyof typeof homeContent.productLines.heroVideos];
 
   return (
     <main>
-      <CategoryHero line={line} />
+      <CategoryHero line={line} videoSrc={videoSrc} />
       <section className="bg-white py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           {products.length ? (

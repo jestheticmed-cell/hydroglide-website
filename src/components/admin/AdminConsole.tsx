@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
 import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
@@ -116,7 +116,7 @@ type AdminData = {
 };
 
 type ModuleKey = "dashboard" | "products" | "orders" | "customers" | "marketing" | "support";
-type ProductSectionKey = "products" | "best-sellers" | "lines" | "home" | "slides" | "reviews" | "media";
+type ProductSectionKey = "products" | "best-sellers" | "lines" | "list-pages" | "home" | "slides" | "reviews" | "media";
 
 const modules: Array<{ key: ModuleKey; label: string; description: string; icon: typeof BarChart3 }> = [
   { key: "dashboard", label: "仪表盘", description: "数据看板", icon: BarChart3 },
@@ -131,6 +131,7 @@ const productSections: Array<{ key: ProductSectionKey; label: string }> = [
   { key: "products", label: "商品管理" },
   { key: "best-sellers", label: "Best Seller 设置" },
   { key: "lines", label: "产品系列" },
+  { key: "list-pages", label: "产品列表页管理" },
   { key: "home", label: "首页文案" },
   { key: "slides", label: "轮播图" },
   { key: "reviews", label: "评价" },
@@ -475,13 +476,51 @@ export function AdminConsole() {
     }
   }
 
-  async function uploadFile(file: File) {
+async function uploadFile(file: File) {
     const body = new FormData();
     body.set("file", file);
     const response = await fetch("/api/admin/upload", { method: "POST", headers, body });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error ?? "图片上传失败");
+    if (!response.ok) throw new Error(result.error ?? "素材上传失败");
     return String(result.url);
+  }
+
+  async function saveListPageSettings(nextLine: ProductLineRow, nextHomeContent: HomeContent) {
+    setSaving(true);
+    setStatus("");
+    setError("");
+
+    try {
+      const requestHeaders = { "content-type": "application/json", ...(headers ?? {}) };
+
+      const [lineResponse, homeResponse] = await Promise.all([
+        fetch("/api/admin/content", {
+          method: "POST",
+          headers: requestHeaders,
+          body: JSON.stringify({ table: "product_lines", record: nextLine })
+        }),
+        fetch("/api/admin/content", {
+          method: "POST",
+          headers: requestHeaders,
+          body: JSON.stringify({ content: nextHomeContent })
+        })
+      ]);
+
+      const [lineResult, homeResult] = await Promise.all([
+        lineResponse.json().catch(() => ({})),
+        homeResponse.json().catch(() => ({}))
+      ]);
+
+      if (!lineResponse.ok) throw new Error(lineResult.error ?? "产品列表页系列配置保存失败");
+      if (!homeResponse.ok) throw new Error(homeResult.error ?? "产品列表页视频配置保存失败");
+
+      await loadData(adminToken);
+      setStatus("产品列表页配置已保存");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "产品列表页配置保存失败");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function updateSupportInbox(action: "reply" | "mark_read" | "archive" | "reopen", conversationId: string, message?: string) {
@@ -758,6 +797,20 @@ export function AdminConsole() {
             </RecordEditor>
           ) : null}
 
+          {activeModule === "products" && activeProductSection === "list-pages" && line && data ? (
+            <RecordEditor items={data.productLines} selected={selected.lines} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, lines: index }))}>
+              <ListPageSettingsPanel
+                line={line}
+                homeContent={data.homeContent}
+                saving={saving}
+                onLineChange={(nextLine) => updateCollection("productLines", selected.lines, nextLine)}
+                onHomeChange={updateHome}
+                onSave={(nextLine, nextHomeContent) => void saveListPageSettings(nextLine, nextHomeContent)}
+                uploadFile={uploadFile}
+              />
+            </RecordEditor>
+          ) : null}
+
           {activeModule === "products" && activeProductSection === "products" && product ? (
             <RecordEditor items={data?.products ?? []} selected={selected.products} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, products: index }))}>
               <ProductForm
@@ -872,6 +925,176 @@ function CenterPlaceholder({ title, description, items }: { title: string; descr
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ListPageSettingsPanel({
+  line,
+  homeContent,
+  saving,
+  onLineChange,
+  onHomeChange,
+  onSave,
+  uploadFile
+}: {
+  line: ProductLineRow;
+  homeContent: HomeContent;
+  saving: boolean;
+  onLineChange: (line: ProductLineRow) => void;
+  onHomeChange: (content: HomeContent) => void;
+  onSave: (line: ProductLineRow, content: HomeContent) => void;
+  uploadFile: (file: File) => Promise<string>;
+}) {
+  const videoSrc = homeContent.productLines.heroVideos[line.slug] ?? "";
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [assetError, setAssetError] = useState("");
+
+  function updateVideo(nextVideo: string) {
+    onHomeChange({
+      ...homeContent,
+      productLines: {
+        ...homeContent.productLines,
+        heroVideos: {
+          ...homeContent.productLines.heroVideos,
+          [line.slug]: nextVideo.trim()
+        }
+      }
+    });
+  }
+
+  async function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? []);
+    if (!files.length) return;
+
+    setUploadingImages(true);
+    setAssetError("");
+    try {
+      const uploaded = await Promise.all(files.map((file) => uploadFile(file)));
+      onLineChange({
+        ...line,
+        hero_images: [...line.hero_images, ...uploaded]
+      });
+    } catch (error) {
+      setAssetError(error instanceof Error ? error.message : "轮播图上传失败");
+    } finally {
+      event.currentTarget.value = "";
+      setUploadingImages(false);
+    }
+  }
+
+  async function handleVideoUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+
+    setUploadingVideo(true);
+    setAssetError("");
+    try {
+      const uploaded = await uploadFile(file);
+      updateVideo(uploaded);
+    } catch (error) {
+      setAssetError(error instanceof Error ? error.message : "视频上传失败");
+    } finally {
+      event.currentTarget.value = "";
+      setUploadingVideo(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-5">
+      <SectionTitle title="产品列表页管理" />
+      <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+        在这里统一配置当前系列的列表页 Hero 标题、系列介绍、轮播图和视频。若填写了视频地址，前台会优先播放视频；留空则自动切换轮播图。
+      </div>
+      {assetError ? <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{assetError}</p> : null}
+      <div className="grid gap-4 md:grid-cols-2">
+        <TextBlock label="Hero 小标题" value={line.eyebrow} onChange={(value) => onLineChange({ ...line, eyebrow: value })} />
+        <TextBlock label="Hero 主标题" value={line.name} onChange={(value) => onLineChange({ ...line, name: value })} />
+      </div>
+      <label className={labelClass}>
+        产品系列文字介绍
+        <textarea
+          className={inputClass}
+          rows={4}
+          value={line.description}
+          onChange={(event) => onLineChange({ ...line, description: event.target.value })}
+        />
+      </label>
+      <div className="grid gap-5 lg:grid-cols-[1.3fr_0.9fr]">
+        <div className="grid gap-3 border border-slate-200 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950">轮播图管理</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">建议尺寸 2400 x 1400px，最多保留 3-5 张。仅上传 1 张时，前台将静态展示。</p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <UploadCloud className="h-4 w-4" />
+              {uploadingImages ? "上传中..." : "上传轮播图"}
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+            </label>
+          </div>
+          <textarea
+            className={inputClass}
+            rows={5}
+            value={arrayToLines(line.hero_images)}
+            onChange={(event) => onLineChange({ ...line, hero_images: linesToArray(event.target.value) })}
+            placeholder="也可直接粘贴图片 URL，每行一个"
+          />
+          {line.hero_images.length ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {line.hero_images.map((image, index) => (
+                <div key={`${image}-${index}`} className="grid gap-2 border border-slate-200 bg-slate-50 p-2">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-white">
+                    <Image src={image} alt="" fill sizes="240px" className="object-cover" />
+                  </div>
+                  <button
+                    type="button"
+                    className="border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-white"
+                    onClick={() => onLineChange({ ...line, hero_images: line.hero_images.filter((_, imageIndex) => imageIndex !== index) })}
+                  >
+                    删除图片
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">当前还没有上传轮播图。</p>
+          )}
+        </div>
+
+        <div className="grid gap-3 border border-slate-200 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-950">视频管理</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500">建议 MP4 / MOV，16:9 或 21:9 横版素材。上传后会自动覆盖当前系列视频地址。</p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+              <UploadCloud className="h-4 w-4" />
+              {uploadingVideo ? "上传中..." : "上传视频"}
+              <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
+            </label>
+          </div>
+          <TextBlock label="视频 URL" value={videoSrc} onChange={updateVideo} />
+          {videoSrc ? (
+            <div className="grid gap-2">
+              <video className="aspect-video w-full bg-slate-950 object-cover" src={videoSrc} controls preload="metadata" />
+              <button
+                type="button"
+                className="border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                onClick={() => updateVideo("")}
+              >
+                清空视频，改用轮播图
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500">当前未设置视频，前台会读取左侧轮播图。</p>
+          )}
+        </div>
+      </div>
+      <button type="button" disabled={saving || uploadingImages || uploadingVideo} onClick={() => onSave(line, homeContent)} className={buttonClass}>
+        <Save className="h-4 w-4" /> 保存产品列表页配置
+      </button>
     </div>
   );
 }
