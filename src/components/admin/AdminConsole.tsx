@@ -1047,11 +1047,22 @@ function SectionTitle({ title }: { title: string }) {
   return <h2 className="border-b border-slate-200 pb-4 text-xl font-semibold">{title}</h2>;
 }
 
-function TextBlock({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function TextBlock({
+  label,
+  value,
+  onChange,
+  helperText
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  helperText?: string;
+}) {
   return (
     <label className={labelClass}>
       {label}
       <input className={inputClass} value={value ?? ""} onChange={(event) => onChange(event.target.value)} />
+      {helperText ? <span className="text-xs font-normal leading-5 text-slate-500">{helperText}</span> : null}
     </label>
   );
 }
@@ -1263,7 +1274,12 @@ function ProductForm({
     <div className="grid gap-4">
       <div className="grid gap-4 md:grid-cols-3">
         <TextBlock label="产品名" value={product.name} onChange={(value) => update({ ...product, name: value, id: product.id || uid("prod", value) })} />
-        <TextBlock label="Slug" value={product.slug} onChange={(value) => update({ ...product, slug: value })} />
+        <TextBlock
+          label="Slug"
+          value={product.slug}
+          onChange={(value) => update({ ...product, slug: value })}
+          helperText="建议使用小写英文、数字和横线，例如 underwater-treadmill-l800；不要留空格和中文。"
+        />
         <label className={labelClass}>
           系列
           <select className={inputClass} value={product.line_slug} onChange={(event) => update({ ...product, line_slug: event.target.value as ProductRow["line_slug"] })}>
