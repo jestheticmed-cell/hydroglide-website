@@ -12,38 +12,33 @@ type HeaderProps = {
   lines: ProductLine[];
 };
 
-const efoilLineSlugs = new Set(["lift-5f", "lift-5", "lift-x"]);
-
 export function Header({ lines }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<"efoils" | "foils" | null>(null);
   const pathname = usePathname();
   const { totalQuantity, openCart } = useCart();
   const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
-  const efoilItems = lines
-    .filter((line) => efoilLineSlugs.has(line.slug))
-    .map((line) => ({
-      href: `/efoils/${line.slug}`,
-      label: line.name.replace(/\s/g, "")
-  }));
-  const foilItems = [
-    { href: "/foils/boards", label: "Boards" },
-    { href: "/foils/masts", label: "Masts" },
-    { href: "/foils/wings", label: "Wings" }
+  const efoilItems = [
+    { href: `/efoils/${lines.find((line) => line.slug === "lift-5f")?.slug ?? "lift-5f"}`, label: "Mobility Therapy Devices" },
+    { href: `/efoils/${lines.find((line) => line.slug === "lift-5")?.slug ?? "lift-5"}`, label: "Multi-Functional Therapeutic Apparatus" }
   ];
-  const navTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[22px] font-normal tracking-normal";
-  const dropdownTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[18px] font-normal tracking-normal";
-  const mobileNavTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[22px] font-normal tracking-normal";
+  const hydroSportItems = [
+    { href: "/foils/boards", label: "Moderate Training Gear" },
+    { href: "/foils/masts", label: "High-Intensity Hydro System" }
+  ];
+  const navTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[17px] font-normal tracking-normal 2xl:text-[18px]";
+  const dropdownTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[15px] font-normal tracking-normal";
+  const mobileNavTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[19px] font-normal tracking-normal";
   const brandTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[20.5px] font-normal tracking-normal";
   const searchTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[18px] font-normal tracking-normal";
   const navLinkClass =
-    `relative flex h-[75px] items-center text-ink transition after:absolute after:bottom-4 after:left-0 after:h-px after:w-full after:origin-center after:scale-x-0 after:bg-[#078b8b] after:transition hover:text-[#078b8b] hover:after:scale-x-100 ${navTypeClass}`;
+    `relative flex h-[75px] items-center whitespace-nowrap text-ink transition after:absolute after:bottom-4 after:left-0 after:h-px after:w-full after:origin-center after:scale-x-0 after:bg-[#078b8b] after:transition hover:text-[#078b8b] hover:after:scale-x-100 ${navTypeClass}`;
   const dropdownLinkClass =
-    `relative block bg-white px-5 py-3 text-ink transition after:absolute after:bottom-2 after:left-5 after:h-px after:w-[calc(100%-40px)] after:origin-center after:scale-x-0 after:bg-[#078b8b] after:transition hover:text-[#078b8b] hover:after:scale-x-100 ${dropdownTypeClass}`;
+    `relative block bg-white px-5 py-3 leading-6 text-ink transition after:absolute after:bottom-2 after:left-5 after:h-px after:w-[calc(100%-40px)] after:origin-center after:scale-x-0 after:bg-[#078b8b] after:transition hover:text-[#078b8b] hover:after:scale-x-100 ${dropdownTypeClass}`;
   const toolButtonClass =
     "grid h-12 w-12 place-items-center border border-transparent text-ink transition hover:text-[#078b8b] focus:outline-none focus:ring-2 focus:ring-[#078b8b] focus:ring-offset-2";
   const dropdownClass = (name: "efoils" | "foils") =>
-    `absolute left-1/2 top-full z-[80] w-56 -translate-x-1/2 bg-white p-3 shadow-[0_22px_60px_rgba(39,41,44,0.14)] transition group-hover:visible group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 ${
+    `absolute left-1/2 top-full z-[80] w-80 -translate-x-1/2 bg-white p-3 shadow-[0_22px_60px_rgba(39,41,44,0.14)] transition group-hover:visible group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 ${
       openDropdown === name ? "visible pointer-events-auto translate-y-0 opacity-100" : "invisible pointer-events-none translate-y-3 opacity-0"
     }`;
 
@@ -57,7 +52,7 @@ export function Header({ lines }: HeaderProps) {
           <span className={`text-ink ${brandTypeClass}`}>Hydroglide</span>
         </Link>
 
-        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center justify-center gap-10 xl:flex" aria-label="Primary navigation">
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center justify-center gap-6 2xl:gap-8 xl:flex" aria-label="Primary navigation">
           <div
             className="group relative"
             onPointerEnter={() => setOpenDropdown("efoils")}
@@ -75,7 +70,7 @@ export function Header({ lines }: HeaderProps) {
                 }
               }}
             >
-              Efoils
+              Hydrotherapy Equipment
             </Link>
             <div className={dropdownClass("efoils")}>
               <div className="grid gap-2">
@@ -104,11 +99,11 @@ export function Header({ lines }: HeaderProps) {
                 }
               }}
             >
-              Foils
+              HydroSport Equipment
             </Link>
             <div className={dropdownClass("foils")}>
               <div className="grid gap-2">
-                {foilItems.map((item) => (
+                {hydroSportItems.map((item) => (
                   <Link key={item.label} href={item.href} className={dropdownLinkClass}>
                     {item.label}
                   </Link>
@@ -160,7 +155,7 @@ export function Header({ lines }: HeaderProps) {
       {open ? (
         <div className="border-t border-line bg-white px-5 py-4 xl:hidden">
           <div className="grid gap-2">
-            <span className={`px-2 py-2 text-graphite ${mobileNavTypeClass}`}>eFoils</span>
+            <span className={`px-2 py-2 text-graphite ${mobileNavTypeClass}`}>Hydrotherapy Equipment</span>
             {efoilItems.map((item) => (
               <Link
                 key={item.href}
@@ -171,8 +166,8 @@ export function Header({ lines }: HeaderProps) {
                 {item.label}
               </Link>
             ))}
-            <span className={`mt-3 px-2 py-2 text-graphite ${mobileNavTypeClass}`}>Foils</span>
-            {foilItems.map((item) => (
+            <span className={`mt-3 px-2 py-2 text-graphite ${mobileNavTypeClass}`}>HydroSport Equipment</span>
+            {hydroSportItems.map((item) => (
               <Link
                 key={item.label}
                 href={item.href}
