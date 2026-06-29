@@ -45,7 +45,7 @@ export const fallbackHomeContent: HomeContent = {
   bestSellers: {
     title: "BEST SELLERS",
     copy: "Our crowd-favorite efoils trusted by riders worldwide.\nBalanced stability and thrilling performance in every bestselling board.",
-    productSlugs: ["lift-5f-cruiser", "lift-5-carbon", "lift-x-pro"]
+    productSlugs: []
   },
   reviews: {
     title: "REVIEWS",

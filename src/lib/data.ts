@@ -177,8 +177,9 @@ export async function getProductsByLine(lineSlug: string): Promise<Product[]> {
 
 export async function getBestSellers(): Promise<Product[]> {
   noStore();
+  const fallbackBestSellers = products.filter((product) => product.isBestSeller).sort((a, b) => a.sortOrder - b.sortOrder);
   const supabase = getSupabaseClient();
-  if (!supabase) return products.filter((product) => product.isBestSeller).sort((a, b) => a.sortOrder - b.sortOrder);
+  if (!supabase) return fallbackBestSellers;
 
   const { data, error } = await supabase
     .from("products")
@@ -186,9 +187,9 @@ export async function getBestSellers(): Promise<Product[]> {
     .eq("is_best_seller", true)
     .eq("status", "published")
     .order("sort_order")
-    .limit(4);
+    .limit(6);
 
-  if (error || !data?.length) return products.filter((product) => product.isBestSeller);
+  if (error || !data?.length) return fallbackBestSellers;
   return (data as ProductRow[]).map(mapProduct);
 }
 

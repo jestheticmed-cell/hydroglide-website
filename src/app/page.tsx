@@ -8,32 +8,25 @@ export const dynamic = "force-dynamic";
 
 const efoilLineSlugs = new Set(["lift-5f", "lift-5", "lift-x"]);
 
+function normalizeBestSellerCount<T>(items: T[]) {
+  if (items.length >= 6) return items.slice(0, 6);
+  if (items.length >= 3) return items.slice(0, 3);
+  return [];
+}
+
 export default async function HomePage() {
   const homeContent = await getHomeContent();
   const heroVideo = homeContent.hero.videoSrc.trim() ? homeContent.hero : undefined;
   const featuredLineProductSlugs = Object.entries(homeContent.productLines.featuredProductSlugs);
-  const [slides, lines, selectedBestSellers, autoBestSellers, selectedLineProducts, reviews] = await Promise.all([
+  const [slides, lines, autoBestSellers, selectedLineProducts, reviews] = await Promise.all([
     getHeroSlides(),
     getProductLines(),
-    Promise.all(homeContent.bestSellers.productSlugs.map((slug) => getProduct(slug))),
     getBestSellers(),
     Promise.all(featuredLineProductSlugs.map(([, productSlug]) => getProduct(productSlug))),
     getReviews()
   ]);
   const efoilLines = lines.filter((line) => efoilLineSlugs.has(line.slug));
-  const bestSellersBySlug = new Map<string, NonNullable<(typeof selectedBestSellers)[number]>>();
-
-  selectedBestSellers.forEach((product) => {
-    if (product) bestSellersBySlug.set(product.slug, product);
-  });
-
-  autoBestSellers.forEach((product) => {
-    if (!bestSellersBySlug.has(product.slug)) {
-      bestSellersBySlug.set(product.slug, product);
-    }
-  });
-
-  const bestSellers = Array.from(bestSellersBySlug.values());
+  const bestSellers = normalizeBestSellerCount(autoBestSellers);
   const productHrefByLineSlug = Object.fromEntries(
     featuredLineProductSlugs.map(([lineSlug, productSlug]) => [lineSlug, `/products/${productSlug}`])
   );

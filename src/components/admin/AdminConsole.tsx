@@ -118,7 +118,7 @@ type AdminData = {
 };
 
 type ModuleKey = "dashboard" | "products" | "orders" | "customers" | "marketing" | "support";
-type ProductSectionKey = "products" | "lines" | "home" | "slides" | "reviews" | "media";
+type ProductSectionKey = "products" | "best-sellers" | "lines" | "home" | "slides" | "reviews" | "media";
 
 const modules: Array<{ key: ModuleKey; label: string; description: string; icon: typeof BarChart3 }> = [
   { key: "dashboard", label: "仪表盘", description: "数据看板", icon: BarChart3 },
@@ -131,6 +131,7 @@ const modules: Array<{ key: ModuleKey; label: string; description: string; icon:
 
 const productSections: Array<{ key: ProductSectionKey; label: string }> = [
   { key: "products", label: "商品管理" },
+  { key: "best-sellers", label: "Best Seller 设置" },
   { key: "lines", label: "产品系列" },
   { key: "home", label: "首页文案" },
   { key: "slides", label: "轮播图" },
@@ -428,6 +429,10 @@ export function AdminConsole() {
     await savePayload({ table, record }, message);
   }
 
+  async function saveBestSellerSettings(records: ProductRow[]) {
+    await savePayload({ table: "products", records }, "Best Seller 设置已保存");
+  }
+
   async function savePayload(payload: Record<string, unknown>, message: string) {
     setSaving(true);
     setStatus("");
@@ -704,13 +709,24 @@ export function AdminConsole() {
               <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
               <label className={labelClass}>首页系列推荐商品（每行 系列slug: 产品slug）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.featuredProductSlugs)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, featuredProductSlugs: textToKeyValues(event.target.value) } })} /></label>
               <label className={labelClass}>系列页视频地址（每行 系列slug: 视频URL）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.heroVideos)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, heroVideos: textToKeyValues(event.target.value) } })} /></label>
-              <label className={labelClass}>热卖产品 Slug（每行一个）<textarea className={inputClass} rows={4} value={arrayToLines(data.homeContent.bestSellers.productSlugs)} onChange={(event) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, productSlugs: linesToArray(event.target.value) } })} /></label>
+              <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                首页 Best Sellers 现在只读取“Best Seller 设置”专区中的商品，不再使用手动填写 slug 的方式。
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <TextBlock label="评价区标题" value={data.homeContent.reviews.title} onChange={(value) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, title: value } })} />
                 <label className={labelClass}>评价区文案<textarea className={inputClass} rows={4} value={data.homeContent.reviews.copy} onChange={(event) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, copy: event.target.value } })} /></label>
               </div>
               <button type="button" disabled={saving} onClick={saveHome} className={buttonClass}><Save className="h-4 w-4" /> 保存首页文案</button>
             </div>
+          ) : null}
+
+          {activeModule === "products" && activeProductSection === "best-sellers" && data ? (
+            <BestSellerSettingsPanel
+              products={data.products}
+              saving={saving}
+              onChange={(products) => setData((current) => (current ? { ...current, products } : current))}
+              onSave={(products) => void saveBestSellerSettings(products)}
+            />
           ) : null}
 
           {activeModule === "products" && activeProductSection === "slides" && slide ? (
@@ -857,6 +873,112 @@ function CenterPlaceholder({ title, description, items }: { title: string; descr
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BestSellerSettingsPanel({
+  products,
+  saving,
+  onChange,
+  onSave
+}: {
+  products: ProductRow[];
+  saving: boolean;
+  onChange: (products: ProductRow[]) => void;
+  onSave: (products: ProductRow[]) => void;
+}) {
+  const publishedProducts = products.filter((product) => product.status === "published");
+  const selectedProducts = publishedProducts
+    .filter((product) => product.is_best_seller)
+    .sort((left, right) => left.sort_order - right.sort_order);
+  const availableProducts = publishedProducts
+    .filter((product) => !product.is_best_seller)
+    .sort((left, right) => left.sort_order - right.sort_order);
+  const selectedCount = selectedProducts.length;
+  const isValidCount = selectedCount === 3 || selectedCount === 6;
+
+  function setBestSeller(productId: string, isBestSeller: boolean) {
+    onChange(
+      products.map((product) => (product.id === productId ? { ...product, is_best_seller: isBestSeller } : product))
+    );
+  }
+
+  return (
+    <div className="grid gap-5">
+      <SectionTitle title="Best Seller 设置专区" />
+      <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+        首页 Best Sellers 模块现在只读取这里的商品。展示数量固定为 3 个或 6 个，请先在这里完成组合，再保存到前台。
+      </div>
+      <div className={`border px-4 py-3 text-sm font-medium ${isValidCount ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+        当前已选 {selectedCount} 个热卖商品。{isValidCount ? "数量符合前台展示规则，可直接保存。" : "请调整到 3 个或 6 个后再保存。"}
+      </div>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid gap-3 border border-slate-200 p-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">已设为 Best Sellers</h3>
+            <p className="mt-1 text-sm text-slate-500">这里的商品会进入首页热卖模块。</p>
+          </div>
+          <div className="grid gap-3">
+            {selectedProducts.length ? selectedProducts.map((product) => (
+              <article key={product.id} className="flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-950">{product.name}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{product.line_slug}</p>
+                </div>
+                <button
+                  type="button"
+                  className="border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setBestSeller(product.id, false)}
+                >
+                  取消热卖
+                </button>
+              </article>
+            )) : (
+              <div className="border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">还没有选中任何热卖商品。</div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-3 border border-slate-200 p-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-950">可加入 Best Sellers 的商品</h3>
+            <p className="mt-1 text-sm text-slate-500">只显示已发布、且当前未加入热卖区的商品。</p>
+          </div>
+          <div className="grid gap-3">
+            {availableProducts.length ? availableProducts.map((product) => (
+              <article key={product.id} className="flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-950">{product.name}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{product.line_slug}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={selectedCount >= 6}
+                  className="border border-[#078b8b] px-3 py-2 text-sm font-semibold text-[#078b8b] transition hover:bg-[#eefafa] disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                  onClick={() => setBestSeller(product.id, true)}
+                >
+                  加入热卖
+                </button>
+              </article>
+            )) : (
+              <div className="border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">没有更多可加入的已发布商品。</div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">保存后首页热卖区会自动按排序展示前 3 个或 6 个商品。</p>
+        <button
+          type="button"
+          disabled={saving || !isValidCount}
+          onClick={() => onSave(products)}
+          className={buttonClass}
+        >
+          <Save className="h-4 w-4" />
+          保存 Best Seller 设置
+        </button>
       </div>
     </div>
   );
@@ -1310,7 +1432,9 @@ function ProductForm({
         </label>
         <label className={labelClass}>排序<NumberInput value={product.sort_order} onChange={(value) => update({ ...product, sort_order: value })} /></label>
       </div>
-      <label className="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" checked={product.is_best_seller} onChange={(event) => update({ ...product, is_best_seller: event.target.checked })} /> 设为热卖</label>
+      <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+        热卖商品请统一在“Best Seller 设置”专区中维护。首页热卖区只支持展示 3 个或 6 个商品。
+      </div>
       <label className={labelClass}>产品摘要<textarea className={inputClass} rows={3} value={product.summary} onChange={(event) => update({ ...product, summary: event.target.value })} /></label>
       <label className={labelClass}>产品描述<textarea className={inputClass} rows={5} value={product.description} onChange={(event) => update({ ...product, description: event.target.value })} /></label>
       <div className="grid gap-4 md:grid-cols-2">

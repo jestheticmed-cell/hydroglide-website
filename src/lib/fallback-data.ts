@@ -98,7 +98,7 @@ export const products: Product[] = [
       "Removable battery system designed for efficient waterfront swaps."
     ],
     specs: { Board: "5'4 carbon composite", Battery: "2.1 kWh removable", Runtime: "Up to 120 minutes", Mast: "28 in carbon" },
-    isBestSeller: true,
+    isBestSeller: false,
     sortOrder: 1
   },
   {
@@ -144,7 +144,7 @@ export const products: Product[] = [
       "Responsive carbon board feel with predictable foil feedback."
     ],
     specs: { Board: "4'9 carbon", Battery: "2.4 kWh removable", Runtime: "Up to 150 minutes", Mast: "30 in carbon" },
-    isBestSeller: true,
+    isBestSeller: false,
     sortOrder: 1
   },
   {
@@ -190,7 +190,7 @@ export const products: Product[] = [
       "High-modulus carbon mast pairing for precise expert feedback."
     ],
     specs: { Board: "4'4 carbon race", Battery: "2.4 kWh high-output", Runtime: "Up to 115 minutes", Mast: "32 in HM carbon" },
-    isBestSeller: true,
+    isBestSeller: false,
     sortOrder: 1
   },
   {

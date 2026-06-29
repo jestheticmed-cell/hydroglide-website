@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as { table?: string; record?: Record<string, unknown>; content?: unknown };
+    const body = (await request.json()) as { table?: string; record?: Record<string, unknown>; records?: Record<string, unknown>[]; content?: unknown };
 
     if (body.content) {
       const { error } = await supabase.from("site_content").upsert({ key: "home", content: body.content, updated_at: new Date().toISOString() });
@@ -211,20 +211,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    if (!body.table || !TABLES.has(body.table) || !body.record) {
+    if (!body.table || !TABLES.has(body.table) || (!body.record && !body.records?.length)) {
       return NextResponse.json({ error: "Invalid admin save request." }, { status: 400 });
     }
 
-    if (body.table === "products" && typeof body.record.line_slug === "string") {
-      const defaultLine = defaultProductLines[body.record.line_slug];
+    if (body.table === "products") {
+      const productRecords = body.records?.length ? body.records : body.record ? [body.record] : [];
 
-      if (defaultLine) {
-        const { error } = await supabase.from("product_lines").upsert(defaultLine);
-        if (error) throw error;
+      for (const productRecord of productRecords) {
+        if (typeof productRecord.line_slug !== "string") continue;
+        const defaultLine = defaultProductLines[productRecord.line_slug];
+
+        if (defaultLine) {
+          const { error } = await supabase.from("product_lines").upsert(defaultLine);
+          if (error) throw error;
+        }
       }
     }
 
-    const { error } = await supabase.from(body.table).upsert(body.record);
+    const payload = body.records?.length ? body.records : body.record;
+    if (!payload) {
+      return NextResponse.json({ error: "Invalid admin save payload." }, { status: 400 });
+    }
+    const { error } = await supabase.from(body.table).upsert(payload);
     if (error) throw error;
     revalidateStorefront();
 
