@@ -12,14 +12,12 @@ type ProductSpecValue = string | { text?: string; image?: string };
 
 const lineOptionsByCategory: Record<ProductCategory, Array<{ label: string; value: ProductLineSlug }>> = {
   efoils: [
-    { label: "Lift 5F", value: "lift-5f" },
-    { label: "Lift 5", value: "lift-5" },
-    { label: "Lift X", value: "lift-x" }
+    { label: "Mobility Therapy Devices", value: "lift-5f" },
+    { label: "Multi-Functional Therapeutic Apparatus", value: "lift-5" }
   ],
   foils: [
-    { label: "Boards", value: "boards" },
-    { label: "Masts", value: "masts" },
-    { label: "Wings", value: "wings" }
+    { label: "Moderate Training Gear", value: "boards" },
+    { label: "High-Intensity Hydro System", value: "masts" }
   ]
 };
 
@@ -813,7 +811,7 @@ function DashboardPanel({ data }: { data: AdminData }) {
   const activeReviews = data.reviews.filter((review) => review.is_active).length;
   const cards = [
     { label: "商品总数", value: data.products.length, note: `${publishedProducts} 个已发布，${draftProducts} 个草稿` },
-    { label: "产品系列", value: data.productLines.length, note: "前台 Efoils 系列导航数据" },
+    { label: "产品系列", value: data.productLines.length, note: "前台 Hydrotherapy / HydroSport 系列导航数据" },
     { label: "轮播图", value: data.heroSlides.length, note: `${activeSlides} 张正在前台展示` },
     { label: "客户评价", value: data.reviews.length, note: `${activeReviews} 条已启用` }
   ];
@@ -1295,7 +1293,18 @@ function ProductForm({
   const [detailText, setDetailText] = useState("");
   const [specImageKey, setSpecImageKey] = useState("");
   const category = product.primary_category ?? "efoils";
-  const lineOptions = lineOptionsByCategory[category];
+  const lineOptions = (() => {
+    const baseOptions = lineOptionsByCategory[category];
+    if (baseOptions.some((option) => option.value === product.line_slug)) return baseOptions;
+
+    return [
+      ...baseOptions,
+      {
+        label: `${product.line_slug} (Legacy)`,
+        value: product.line_slug
+      }
+    ];
+  })();
 
   function updateCategory(nextCategory: ProductCategory) {
     const nextOptions = lineOptionsByCategory[nextCategory];
@@ -1417,8 +1426,8 @@ function ProductForm({
         <label className={labelClass}>
           一级大类目
           <select className={inputClass} value={category} onChange={(event) => updateCategory(event.target.value as ProductCategory)}>
-            <option value="efoils">Efoils</option>
-            <option value="foils">Foils</option>
+            <option value="efoils">Hydrotherapy Equipment</option>
+            <option value="foils">HydroSport Equipment</option>
           </select>
         </label>
         <label className={labelClass}>价格（美分）<NumberInput value={product.price_cents} onChange={(value) => update({ ...product, price_cents: value })} /></label>
