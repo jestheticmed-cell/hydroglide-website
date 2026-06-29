@@ -9,9 +9,7 @@ export const dynamic = "force-dynamic";
 const efoilLineSlugs = new Set(["lift-5f", "lift-5", "lift-x"]);
 
 function normalizeBestSellerCount<T>(items: T[]) {
-  if (items.length >= 6) return items.slice(0, 6);
-  if (items.length >= 3) return items.slice(0, 3);
-  return [];
+  return items.slice(0, 6);
 }
 
 export default async function HomePage() {

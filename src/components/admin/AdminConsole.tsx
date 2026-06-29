@@ -897,7 +897,7 @@ function BestSellerSettingsPanel({
     .filter((product) => !product.is_best_seller)
     .sort((left, right) => left.sort_order - right.sort_order);
   const selectedCount = selectedProducts.length;
-  const isValidCount = selectedCount === 3 || selectedCount === 6;
+  const isValidCount = selectedCount >= 1 && selectedCount <= 6;
 
   function setBestSeller(productId: string, isBestSeller: boolean) {
     onChange(
@@ -909,10 +909,10 @@ function BestSellerSettingsPanel({
     <div className="grid gap-5">
       <SectionTitle title="Best Seller 设置专区" />
       <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-        首页 Best Sellers 模块现在只读取这里的商品。展示数量固定为 3 个或 6 个，请先在这里完成组合，再保存到前台。
+        首页 Best Sellers 模块现在只读取这里的商品。有几个显示几个，最多展示 6 个，请在这里完成组合后再保存到前台。
       </div>
       <div className={`border px-4 py-3 text-sm font-medium ${isValidCount ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-        当前已选 {selectedCount} 个热卖商品。{isValidCount ? "数量符合前台展示规则，可直接保存。" : "请调整到 3 个或 6 个后再保存。"}
+        当前已选 {selectedCount} 个热卖商品。{isValidCount ? "数量符合前台展示规则，可直接保存。" : "请至少保留 1 个热卖商品，且最多选择 6 个。"}
       </div>
       <div className="grid gap-5 xl:grid-cols-2">
         <div className="grid gap-3 border border-slate-200 p-4">
@@ -969,7 +969,7 @@ function BestSellerSettingsPanel({
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-slate-500">保存后首页热卖区会自动按排序展示前 3 个或 6 个商品。</p>
+        <p className="text-sm text-slate-500">保存后首页热卖区会自动按排序展示已选商品，最多展示前 6 个。</p>
         <button
           type="button"
           disabled={saving || !isValidCount}
@@ -1433,7 +1433,7 @@ function ProductForm({
         <label className={labelClass}>排序<NumberInput value={product.sort_order} onChange={(value) => update({ ...product, sort_order: value })} /></label>
       </div>
       <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-        热卖商品请统一在“Best Seller 设置”专区中维护。首页热卖区只支持展示 3 个或 6 个商品。
+        热卖商品请统一在“Best Seller 设置”专区中维护。首页热卖区会按排序展示已选商品，最多展示 6 个。
       </div>
       <label className={labelClass}>产品摘要<textarea className={inputClass} rows={3} value={product.summary} onChange={(event) => update({ ...product, summary: event.target.value })} /></label>
       <label className={labelClass}>产品描述<textarea className={inputClass} rows={5} value={product.description} onChange={(event) => update({ ...product, description: event.target.value })} /></label>
