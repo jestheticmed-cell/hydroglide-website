@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { CategoryHero } from "@/components/CategoryHero";
 import { ProductCard } from "@/components/ProductCard";
 import { getProductLine, getProductsByLine } from "@/lib/data";
+import { hydrosportLineSlugs } from "@/lib/product-line-config";
 import { getHomeContent } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ type FoilListPageProps = {
   }>;
 };
 
-const foilLineSlugs = new Set(["boards", "masts", "wings"]);
+const foilLineSlugs = new Set<string>(hydrosportLineSlugs);
 
 export default async function FoilListPage({ params }: FoilListPageProps) {
   const { line: slug } = await params;

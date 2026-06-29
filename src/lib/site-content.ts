@@ -36,7 +36,8 @@ export const fallbackHomeContent: HomeContent = {
     featuredProductSlugs: {
       "lift-5f": "lift-5f-cruiser",
       "lift-5": "lift-5-carbon",
-      "lift-x": "lift-x-pro"
+      "boards": "underwater-treadmill-l800",
+      "masts": "portable-underwater-treadmill-p200"
     },
     heroVideos: {
       "lift-5f": "/videos/lift5F.mp4"

@@ -28,10 +28,10 @@ export const productLines: ProductLine[] = [
   {
     id: "line-lift-5f",
     slug: "lift-5f",
-    name: "Lift 5F",
-    eyebrow: "Entry precision",
-    tagline: "Stable volume for confident first flights.",
-    description: "Lift 5F balances forgiving takeoff behavior with clean carbon construction for riders entering electric foil sport.",
+    name: "Mobility Therapy Devices",
+    eyebrow: "Hydrotherapy Equipment",
+    tagline: "Foundational aquatic mobility systems.",
+    description: "Therapy-focused equipment designed for guided aquatic mobility, smooth support, and confidence-building rehabilitation sessions.",
     heroImages: [
       "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2200&q=84",
       "https://images.unsplash.com/photo-1468413253725-0d5181091126?auto=format&fit=crop&w=2200&q=84",
@@ -42,10 +42,10 @@ export const productLines: ProductLine[] = [
   {
     id: "line-lift-5",
     slug: "lift-5",
-    name: "Lift 5",
-    eyebrow: "Balanced range",
-    tagline: "The daily performance eFoil platform.",
-    description: "Lift 5 is tuned for riders who want compact handling, efficient range, and a composed feel across varied water.",
+    name: "Multi-Functional Therapeutic Apparatus",
+    eyebrow: "Hydrotherapy Equipment",
+    tagline: "Versatile therapeutic systems for structured recovery.",
+    description: "Multi-functional therapeutic equipment built for adaptable water rehabilitation, progressive routines, and refined clinical support.",
     heroImages: [
       "https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&w=2200&q=84",
       "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=2200&q=84",
@@ -54,18 +54,24 @@ export const productLines: ProductLine[] = [
     sortOrder: 2
   },
   {
-    id: "line-lift-x",
-    slug: "lift-x",
-    name: "Lift X",
-    eyebrow: "High-output flight",
-    tagline: "Fast, compact, and tuned for expert control.",
-    description: "Lift X reduces swing weight and sharpens throttle response for advanced riders chasing speed and tight carving.",
-    heroImages: [
-      "https://images.unsplash.com/photo-1518481612222-68bbe828ecd1?auto=format&fit=crop&w=2200&q=84",
-      "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=2200&q=84",
-      "https://images.unsplash.com/photo-1484291470158-b8f8d608850d?auto=format&fit=crop&w=2200&q=84"
-    ],
+    id: "line-boards",
+    slug: "boards",
+    name: "Moderate Training Gear",
+    eyebrow: "HydroSport Equipment",
+    tagline: "Stable, controlled aquatic training systems.",
+    description: "Equipment configured for stable stance, smooth resistance, and efficient therapeutic water movement.",
+    heroImages: [],
     sortOrder: 3
+  },
+  {
+    id: "line-masts",
+    slug: "masts",
+    name: "High-Intensity Hydro System",
+    eyebrow: "HydroSport Equipment",
+    tagline: "Power-focused systems for advanced aquatic training.",
+    description: "High-output hydro systems designed for stronger resistance, higher intensity, and more demanding training sessions.",
+    heroImages: [],
+    sortOrder: 4
   }
 ];
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "./CartProvider";
+import { storefrontLineOptionsByCategory } from "@/lib/product-line-config";
 import type { ProductLine } from "@/lib/types";
 
 type HeaderProps = {
@@ -18,14 +19,14 @@ export function Header({ lines }: HeaderProps) {
   const pathname = usePathname();
   const { totalQuantity, openCart } = useCart();
   const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
-  const efoilItems = [
-    { href: `/efoils/${lines.find((line) => line.slug === "lift-5f")?.slug ?? "lift-5f"}`, label: "Mobility Therapy Devices" },
-    { href: `/efoils/${lines.find((line) => line.slug === "lift-5")?.slug ?? "lift-5"}`, label: "Multi-Functional Therapeutic Apparatus" }
-  ];
-  const hydroSportItems = [
-    { href: "/foils/boards", label: "Moderate Training Gear" },
-    { href: "/foils/masts", label: "High-Intensity Hydro System" }
-  ];
+  const efoilItems = storefrontLineOptionsByCategory.efoils.map((item) => ({
+    href: `/efoils/${lines.find((line) => line.slug === item.value)?.slug ?? item.value}`,
+    label: item.label
+  }));
+  const hydroSportItems = storefrontLineOptionsByCategory.foils.map((item) => ({
+    href: `/foils/${item.value}`,
+    label: item.label
+  }));
   const navTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[17px] font-normal tracking-normal 2xl:text-[18px]";
   const dropdownTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[15px] font-normal tracking-normal";
   const mobileNavTypeClass = "[font-family:'Helvetica_Neue',Helvetica,Arial,sans-serif] text-[19px] font-normal tracking-normal";

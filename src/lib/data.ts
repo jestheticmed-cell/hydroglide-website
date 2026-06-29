@@ -1,6 +1,7 @@
 import { unstable_noStore as noStore } from "next/cache";
-import { heroSlides, productLines, products, reviews } from "./fallback-data";
+import { heroSlides, products, reviews } from "./fallback-data";
 import { formatCents } from "./format";
+import { storefrontLineConfigs } from "./product-line-config";
 import { getSupabaseClient } from "./supabase";
 import type { HeroSlide, Product, ProductLine, ProductLineSlug, ProductSpecValue, Review } from "./types";
 
@@ -107,13 +108,25 @@ const mapHeroSlide = (row: HeroSlideRow): HeroSlide => ({
 
 function mergeProductLines(rows: ProductLineRow[]) {
   const merged = new Map<ProductLineSlug, ProductLine>();
+  const rowMap = new Map(rows.map((row) => [row.slug, row] as const));
 
-  productLines.forEach((line) => {
-    merged.set(line.slug, line);
-  });
-
-  rows.map(mapLine).forEach((line) => {
-    merged.set(line.slug, line);
+  storefrontLineConfigs.forEach((config) => {
+    const row = rowMap.get(config.slug);
+    merged.set(
+      config.slug,
+      row
+        ? mapLine(row)
+        : {
+            id: `line-${config.slug}`,
+            slug: config.slug,
+            name: config.defaultName,
+            eyebrow: config.defaultEyebrow,
+            tagline: config.defaultTagline,
+            description: config.defaultDescription,
+            heroImages: [],
+            sortOrder: config.sortOrder
+          }
+    );
   });
 
   return Array.from(merged.values()).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -137,7 +150,7 @@ export async function getHeroSlides(): Promise<HeroSlide[]> {
 export async function getProductLines(): Promise<ProductLine[]> {
   noStore();
   const supabase = getSupabaseClient();
-  if (!supabase) return productLines;
+  if (!supabase) return mergeProductLines([]);
 
   const { data, error } = await supabase
     .from("product_lines")
@@ -145,7 +158,7 @@ export async function getProductLines(): Promise<ProductLine[]> {
     .eq("is_active", true)
     .order("sort_order");
 
-  if (error || !data?.length) return productLines;
+  if (error) return mergeProductLines([]);
   return mergeProductLines(data as ProductLineRow[]);
 }
 

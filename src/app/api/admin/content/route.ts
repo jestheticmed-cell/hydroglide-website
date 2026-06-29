@@ -3,49 +3,29 @@ import { revalidatePath } from "next/cache";
 import { fallbackHomeContent } from "@/lib/site-content";
 import { verifyAdminRequest } from "@/lib/admin-auth";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
+import { storefrontLineConfigs } from "@/lib/product-line-config";
 import { getSupabaseServiceClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 const TABLES = new Set(["hero_slides", "product_lines", "products", "reviews"]);
 
-const defaultProductLines: Record<
-  string,
-  {
-    id: string;
-    slug: string;
-    name: string;
-    eyebrow: string;
-    tagline: string;
-    description: string;
-    hero_images: string[];
-    sort_order: number;
-    is_active: boolean;
-  }
-> = {
-  boards: {
-    id: "line-boards",
-    slug: "boards",
-    name: "Moderate Training Gear",
-    eyebrow: "HydroSport Equipment",
-    tagline: "Stable, controlled aquatic training systems.",
-    description: "Equipment configured for stable stance, smooth resistance, and efficient therapeutic water movement.",
-    hero_images: [],
-    sort_order: 30,
-    is_active: true
-  },
-  masts: {
-    id: "line-masts",
-    slug: "masts",
-    name: "High-Intensity Hydro System",
-    eyebrow: "HydroSport Equipment",
-    tagline: "Power-focused systems for advanced aquatic training.",
-    description: "High-output hydro systems designed for stronger resistance, higher intensity, and more demanding training sessions.",
-    hero_images: [],
-    sort_order: 31,
-    is_active: true
-  }
-};
+const defaultProductLines = Object.fromEntries(
+  storefrontLineConfigs.map((config) => [
+    config.slug,
+    {
+      id: `line-${config.slug}`,
+      slug: config.slug,
+      name: config.defaultName,
+      eyebrow: config.defaultEyebrow,
+      tagline: config.defaultTagline,
+      description: config.defaultDescription,
+      hero_images: [],
+      sort_order: config.sortOrder,
+      is_active: true
+    }
+  ])
+);
 
 function revalidateStorefront() {
   revalidatePath("/", "layout");
@@ -82,6 +62,22 @@ const fallbackProductLineRows = productLines.map((line) => ({
   sort_order: line.sortOrder,
   is_active: true
 }));
+
+function mergeAdminProductLines(rows: Record<string, unknown>[]) {
+  const merged = new Map<string, Record<string, unknown>>();
+
+  storefrontLineConfigs.forEach((config) => {
+    merged.set(config.slug, defaultProductLines[config.slug]);
+  });
+
+  rows.forEach((row) => {
+    if (typeof row.slug === "string" && merged.has(row.slug)) {
+      merged.set(row.slug, { ...merged.get(row.slug), ...row });
+    }
+  });
+
+  return Array.from(merged.values()).sort((left, right) => Number(left.sort_order ?? 0) - Number(right.sort_order ?? 0));
+}
 
 const fallbackProductRows = products.map((product) => ({
   id: product.id,
@@ -172,7 +168,7 @@ export async function GET(request: NextRequest) {
     configured: warnings.length === 0,
     homeContent: homeContentResult.data?.content ?? fallbackHomeContent,
     heroSlides: heroSlideRows,
-    productLines: lineRows,
+    productLines: mergeAdminProductLines(lineRows as Record<string, unknown>[]),
     products: productRows,
     reviews: reviewRows,
     message: warnings.length

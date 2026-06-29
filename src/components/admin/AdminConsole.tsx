@@ -5,21 +5,12 @@ import Image from "next/image";
 import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
 import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
+import { storefrontLineOptionsByCategory, type ProductCategory } from "@/lib/product-line-config";
 
-type ProductCategory = "efoils" | "foils";
 type ProductLineSlug = "lift-5f" | "lift-5" | "lift-x" | "boards" | "masts" | "wings";
 type ProductSpecValue = string | { text?: string; image?: string };
 
-const lineOptionsByCategory: Record<ProductCategory, Array<{ label: string; value: ProductLineSlug }>> = {
-  efoils: [
-    { label: "Mobility Therapy Devices", value: "lift-5f" },
-    { label: "Multi-Functional Therapeutic Apparatus", value: "lift-5" }
-  ],
-  foils: [
-    { label: "Moderate Training Gear", value: "boards" },
-    { label: "High-Intensity Hydro System", value: "masts" }
-  ]
-};
+const lineOptionsByCategory = storefrontLineOptionsByCategory as Record<ProductCategory, Array<{ label: string; value: ProductLineSlug }>>;
 
 const storefrontLineOptions = (Object.entries(lineOptionsByCategory) as Array<[ProductCategory, Array<{ label: string; value: ProductLineSlug }>]>)
   .flatMap(([category, options]) => options.map((option) => ({ category, ...option })));

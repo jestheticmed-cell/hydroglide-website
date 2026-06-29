@@ -2,11 +2,10 @@ import { HeroCarousel } from "@/components/HeroCarousel";
 import { LineShowcase } from "@/components/LineShowcase";
 import { ProductCard } from "@/components/ProductCard";
 import { getBestSellers, getHeroSlides, getProduct, getProductLines, getReviews } from "@/lib/data";
+import { hydrotherapyLineSlugs } from "@/lib/product-line-config";
 import { getHomeContent } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
-
-const efoilLineSlugs = new Set(["lift-5f", "lift-5", "lift-x"]);
 
 function normalizeBestSellerCount<T>(items: T[]) {
   return items.slice(0, 6);
@@ -23,7 +22,7 @@ export default async function HomePage() {
     Promise.all(featuredLineProductSlugs.map(([, productSlug]) => getProduct(productSlug))),
     getReviews()
   ]);
-  const efoilLines = lines.filter((line) => efoilLineSlugs.has(line.slug));
+  const efoilLines = lines.filter((line) => hydrotherapyLineSlugs.includes(line.slug));
   const bestSellers = normalizeBestSellerCount(autoBestSellers);
   const productHrefByLineSlug = Object.fromEntries(
     featuredLineProductSlugs.map(([lineSlug, productSlug]) => [lineSlug, `/products/${productSlug}`])
