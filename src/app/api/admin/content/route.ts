@@ -26,10 +26,10 @@ const defaultProductLines: Record<
   boards: {
     id: "line-boards",
     slug: "boards",
-    name: "Boards",
-    eyebrow: "Foil Platform",
-    tagline: "Responsive foil boards for refined control.",
-    description: "Foil boards configured for stable stance, efficient lift, and precise water feel.",
+    name: "Moderate Training Gear",
+    eyebrow: "HydroSport Equipment",
+    tagline: "Stable, controlled aquatic training systems.",
+    description: "Equipment configured for stable stance, smooth resistance, and efficient therapeutic water movement.",
     hero_images: [],
     sort_order: 30,
     is_active: true
@@ -37,23 +37,12 @@ const defaultProductLines: Record<
   masts: {
     id: "line-masts",
     slug: "masts",
-    name: "Masts",
-    eyebrow: "Foil Structure",
-    tagline: "Rigid mast options for clean tracking.",
-    description: "Masts designed to balance stiffness, durability, and smooth hydrofoil response.",
+    name: "High-Intensity Hydro System",
+    eyebrow: "HydroSport Equipment",
+    tagline: "Power-focused systems for advanced aquatic training.",
+    description: "High-output hydro systems designed for stronger resistance, higher intensity, and more demanding training sessions.",
     hero_images: [],
     sort_order: 31,
-    is_active: true
-  },
-  wings: {
-    id: "line-wings",
-    slug: "wings",
-    name: "Wings",
-    eyebrow: "Foil Lift",
-    tagline: "Wing sets tuned for lift, glide, and speed.",
-    description: "Front and rear wing options shaped for predictable lift and confident carving.",
-    hero_images: [],
-    sort_order: 32,
     is_active: true
   }
 };

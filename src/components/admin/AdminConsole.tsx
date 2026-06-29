@@ -21,6 +21,9 @@ const lineOptionsByCategory: Record<ProductCategory, Array<{ label: string; valu
   ]
 };
 
+const storefrontLineOptions = (Object.entries(lineOptionsByCategory) as Array<[ProductCategory, Array<{ label: string; value: ProductLineSlug }>]>)
+  .flatMap(([category, options]) => options.map((option) => ({ category, ...option })));
+
 type HeroSlideRow = {
   id: string;
   image: string;
@@ -130,8 +133,7 @@ const modules: Array<{ key: ModuleKey; label: string; description: string; icon:
 const productSections: Array<{ key: ProductSectionKey; label: string }> = [
   { key: "products", label: "商品管理" },
   { key: "best-sellers", label: "Best Seller 设置" },
-  { key: "lines", label: "产品系列" },
-  { key: "list-pages", label: "产品列表页管理" },
+  { key: "list-pages", label: "产品系列 / 列表页管理" },
   { key: "home", label: "首页文案" },
   { key: "slides", label: "轮播图" },
   { key: "reviews", label: "评价" },
@@ -337,6 +339,7 @@ export function AdminConsole() {
   });
   const [supportLoading, setSupportLoading] = useState(false);
   const [supportReply, setSupportReply] = useState("");
+  const [selectedListPageLine, setSelectedListPageLine] = useState(0);
 
   const headers = useMemo(() => (adminToken ? { "x-admin-token": adminToken } : undefined), [adminToken]);
 
@@ -621,9 +624,23 @@ async function uploadFile(file: File) {
   }
 
   const slide = data?.heroSlides[selected.slides];
-  const line = data?.productLines[selected.lines];
   const product = data?.products[selected.products];
   const review = data?.reviews[selected.reviews];
+  const storefrontLineEntries = (data?.productLines
+    ? storefrontLineOptions
+        .map((option) => {
+          const index = data.productLines.findIndex((item) => item.slug === option.value);
+          if (index < 0) return null;
+          return {
+            label: option.label,
+            category: option.category,
+            index,
+            record: data.productLines[index]
+          };
+        })
+        .filter(Boolean)
+    : []) as Array<{ label: string; category: ProductCategory; index: number; record: ProductLineRow }>;
+  const activeListPageEntry = storefrontLineEntries[selectedListPageLine] ?? storefrontLineEntries[0] ?? null;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -781,29 +798,20 @@ async function uploadFile(file: File) {
             </RecordEditor>
           ) : null}
 
-          {activeModule === "products" && activeProductSection === "lines" && line ? (
-            <RecordEditor items={data?.productLines ?? []} selected={selected.lines} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, lines: index }))}>
-              <div className="grid gap-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <TextBlock label="系列名" value={line.name} onChange={(value) => updateCollection("productLines", selected.lines, { ...line, name: value })} />
-                  <TextBlock label="眉标" value={line.eyebrow} onChange={(value) => updateCollection("productLines", selected.lines, { ...line, eyebrow: value })} />
-                  <TextBlock label="标语" value={line.tagline} onChange={(value) => updateCollection("productLines", selected.lines, { ...line, tagline: value })} />
-                </div>
-                <label className={labelClass}>描述<textarea className={inputClass} rows={4} value={line.description} onChange={(event) => updateCollection("productLines", selected.lines, { ...line, description: event.target.value })} /></label>
-                <label className={labelClass}>系列图片 URL（每行一个）<textarea className={inputClass} rows={4} value={arrayToLines(line.hero_images)} onChange={(event) => updateCollection("productLines", selected.lines, { ...line, hero_images: linesToArray(event.target.value) })} /></label>
-                <ToggleRow active={line.is_active} order={line.sort_order} onActive={(value) => updateCollection("productLines", selected.lines, { ...line, is_active: value })} onOrder={(value) => updateCollection("productLines", selected.lines, { ...line, sort_order: value })} />
-                <button type="button" disabled={saving} onClick={() => saveRecord("product_lines", line, "产品系列已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存产品系列</button>
-              </div>
-            </RecordEditor>
-          ) : null}
-
-          {activeModule === "products" && activeProductSection === "list-pages" && line && data ? (
-            <RecordEditor items={data.productLines} selected={selected.lines} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, lines: index }))}>
+          {activeModule === "products" && activeProductSection === "list-pages" && activeListPageEntry && data ? (
+            <RecordEditor
+              items={storefrontLineEntries}
+              selected={selectedListPageLine}
+              labelKey="label"
+              onSelect={setSelectedListPageLine}
+            >
               <ListPageSettingsPanel
-                line={line}
+                line={activeListPageEntry.record}
                 homeContent={data.homeContent}
                 saving={saving}
-                onLineChange={(nextLine) => updateCollection("productLines", selected.lines, nextLine)}
+                navigationLabel={activeListPageEntry.label}
+                categoryLabel={activeListPageEntry.category === "efoils" ? "Hydrotherapy Equipment" : "HydroSport Equipment"}
+                onLineChange={(nextLine) => updateCollection("productLines", activeListPageEntry.index, nextLine)}
                 onHomeChange={updateHome}
                 onSave={(nextLine, nextHomeContent) => void saveListPageSettings(nextLine, nextHomeContent)}
                 uploadFile={uploadFile}
@@ -933,6 +941,8 @@ function ListPageSettingsPanel({
   line,
   homeContent,
   saving,
+  navigationLabel,
+  categoryLabel,
   onLineChange,
   onHomeChange,
   onSave,
@@ -941,6 +951,8 @@ function ListPageSettingsPanel({
   line: ProductLineRow;
   homeContent: HomeContent;
   saving: boolean;
+  navigationLabel: string;
+  categoryLabel: string;
   onLineChange: (line: ProductLineRow) => void;
   onHomeChange: (content: HomeContent) => void;
   onSave: (line: ProductLineRow, content: HomeContent) => void;
@@ -1003,9 +1015,9 @@ function ListPageSettingsPanel({
 
   return (
     <div className="grid gap-5">
-      <SectionTitle title="产品列表页管理" />
+      <SectionTitle title="产品系列 / 列表页管理" />
       <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-        在这里统一配置当前系列的列表页 Hero 标题、系列介绍、轮播图和视频。若填写了视频地址，前台会优先播放视频；留空则自动切换轮播图。
+        当前系列属于 <strong>{categoryLabel}</strong>，导航下拉名称为 <strong>{navigationLabel}</strong>。这里统一配置这一项对应的列表页 Hero 标题、系列介绍、轮播图和视频。若填写了视频地址，前台会优先播放视频；留空则自动切换轮播图。
       </div>
       {assetError ? <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{assetError}</p> : null}
       <div className="grid gap-4 md:grid-cols-2">
