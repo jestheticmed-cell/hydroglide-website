@@ -54,6 +54,9 @@ export function Header({ lines }: HeaderProps) {
         </Link>
 
         <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center justify-center gap-6 2xl:gap-8 xl:flex" aria-label="Primary navigation">
+          <Link href="/" className={navLinkClass}>
+            Home
+          </Link>
           <div
             className="group relative"
             onPointerEnter={() => setOpenDropdown("efoils")}
@@ -156,6 +159,9 @@ export function Header({ lines }: HeaderProps) {
       {open ? (
         <div className="border-t border-line bg-white px-5 py-4 xl:hidden">
           <div className="grid gap-2">
+            <Link href="/" onClick={() => setOpen(false)} className={`px-4 py-3 text-ink ${mobileNavTypeClass}`}>
+              Home
+            </Link>
             <span className={`px-2 py-2 text-graphite ${mobileNavTypeClass}`}>Hydrotherapy Equipment</span>
             {efoilItems.map((item) => (
               <Link
