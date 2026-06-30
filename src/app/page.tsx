@@ -1,8 +1,7 @@
 import { HeroCarousel } from "@/components/HeroCarousel";
 import { LineShowcase } from "@/components/LineShowcase";
 import { ProductCard } from "@/components/ProductCard";
-import { getBestSellers, getHeroSlides, getProduct, getProductLines, getReviews } from "@/lib/data";
-import { hydrotherapyLineSlugs } from "@/lib/product-line-config";
+import { getBestSellers, getHeroSlides, getProductLines, getReviews } from "@/lib/data";
 import { getHomeContent } from "@/lib/site-content";
 
 export const dynamic = "force-dynamic";
@@ -14,26 +13,13 @@ function normalizeBestSellerCount<T>(items: T[]) {
 export default async function HomePage() {
   const homeContent = await getHomeContent();
   const heroVideo = homeContent.hero.videoSrc.trim() ? homeContent.hero : undefined;
-  const featuredLineProductSlugs = Object.entries(homeContent.productLines.featuredProductSlugs);
-  const [slides, lines, autoBestSellers, selectedLineProducts, reviews] = await Promise.all([
+  const [slides, lines, autoBestSellers, reviews] = await Promise.all([
     getHeroSlides(),
     getProductLines(),
     getBestSellers(),
-    Promise.all(featuredLineProductSlugs.map(([, productSlug]) => getProduct(productSlug))),
     getReviews()
   ]);
-  const efoilLines = lines.filter((line) => hydrotherapyLineSlugs.includes(line.slug));
   const bestSellers = normalizeBestSellerCount(autoBestSellers);
-  const productHrefByLineSlug = Object.fromEntries(
-    featuredLineProductSlugs.map(([lineSlug, productSlug]) => [lineSlug, `/products/${productSlug}`])
-  );
-  const productImageByLineSlug = Object.fromEntries(
-    featuredLineProductSlugs.flatMap(([lineSlug], index) => {
-      const product = selectedLineProducts[index];
-      const image = product?.images[0];
-      return image ? [[lineSlug, image]] : [];
-    })
-  );
 
   return (
     <main>
@@ -50,7 +36,7 @@ export default async function HomePage() {
             ))}
           </p>
         </div>
-        <LineShowcase lines={efoilLines} productHrefByLineSlug={productHrefByLineSlug} productImageByLineSlug={productImageByLineSlug} />
+        <LineShowcase lines={lines} cards={homeContent.productLines.cards} />
       </section>
 
       <section id="best-sellers" className="border-y border-line bg-mist py-20 sm:py-28">

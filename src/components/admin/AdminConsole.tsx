@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Archive, BarChart3, Bell, Boxes, ChevronDown, ChevronRight, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
-import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
+import { fallbackHomeContent, type HomeContent, type HomeSeriesCard } from "@/lib/site-content";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
 import { storefrontLineOptionsByCategory, type ProductCategory } from "@/lib/product-line-config";
 
@@ -812,7 +812,11 @@ async function uploadFile(file: File) {
                 <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
                 <label className={labelClass}>热卖区文案<textarea className={inputClass} rows={4} value={data.homeContent.bestSellers.copy} onChange={(event) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, copy: event.target.value } })} /></label>
               </div>
-              <label className={labelClass}>首页系列推荐商品（每行 系列slug: 产品slug）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.featuredProductSlugs)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, featuredProductSlugs: textToKeyValues(event.target.value) } })} /></label>
+              <HomeSeriesCardsEditor
+                homeContent={data.homeContent}
+                onChange={updateHome}
+                uploadFile={uploadFile}
+              />
               <label className={labelClass}>系列页视频地址（每行 系列slug: 视频URL）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.heroVideos)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, heroVideos: textToKeyValues(event.target.value) } })} /></label>
               <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
                 首页 Best Sellers 现在只读取“Best Seller 设置”专区中的商品，不再使用手动填写 slug 的方式。
@@ -821,7 +825,7 @@ async function uploadFile(file: File) {
                 <TextBlock label="评价区标题" value={data.homeContent.reviews.title} onChange={(value) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, title: value } })} />
                 <label className={labelClass}>评价区文案<textarea className={inputClass} rows={4} value={data.homeContent.reviews.copy} onChange={(event) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, copy: event.target.value } })} /></label>
               </div>
-              <button type="button" disabled={saving} onClick={saveHome} className={buttonClass}><Save className="h-4 w-4" /> 保存首页文案</button>
+              <button type="button" disabled={saving} onClick={saveHome} className={buttonClass}><Save className="h-4 w-4" /> 保存首页配置</button>
 
               <div className="border-t border-slate-200 pt-6">
                 <SectionTitle title="首页轮播图管理" />
@@ -1001,6 +1005,132 @@ function CenterPlaceholder({ title, description, items }: { title: string; descr
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function HomeSeriesCardsEditor({
+  homeContent,
+  onChange,
+  uploadFile
+}: {
+  homeContent: HomeContent;
+  onChange: (content: HomeContent) => void;
+  uploadFile: (file: File) => Promise<string>;
+}) {
+  const [uploadingSlug, setUploadingSlug] = useState<ProductLineSlug | null>(null);
+  const [assetError, setAssetError] = useState("");
+
+  function updateCard(slug: ProductLineSlug, patch: Partial<HomeSeriesCard>) {
+    const option = storefrontLineOptions.find((item) => item.value === slug);
+    const currentCard = homeContent.productLines.cards[slug] ?? {
+      image: "",
+      title: option?.label ?? slug,
+      subtitle: ""
+    };
+
+    onChange({
+      ...homeContent,
+      productLines: {
+        ...homeContent.productLines,
+        cards: {
+          ...homeContent.productLines.cards,
+          [slug]: {
+            ...currentCard,
+            ...patch
+          }
+        }
+      }
+    });
+  }
+
+  async function uploadCardImage(slug: ProductLineSlug, file: File) {
+    setUploadingSlug(slug);
+    setAssetError("");
+
+    try {
+      const image = await uploadFile(file);
+      updateCard(slug, { image });
+    } catch (error) {
+      setAssetError(error instanceof Error ? error.message : "系列卡片图片上传失败");
+    } finally {
+      setUploadingSlug(null);
+    }
+  }
+
+  return (
+    <div className="grid gap-4 border border-slate-200 p-4">
+      <div>
+        <h3 className="text-base font-semibold text-slate-950">首页四个产品系列卡片</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-500">
+          图片为首页独立素材，不再读取商品图片。建议上传 1600 x 2000px、4:5 竖版图片；点击前台卡片会自动进入对应产品列表页。
+        </p>
+      </div>
+      {assetError ? <p className="border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{assetError}</p> : null}
+      <div className="grid gap-4 xl:grid-cols-2">
+        {storefrontLineOptions.map((option) => {
+          const card = homeContent.productLines.cards[option.value];
+          const uploading = uploadingSlug === option.value;
+          const categoryLabel = option.category === "efoils" ? "Hydrotherapy Equipment" : "HydroSport Equipment";
+
+          return (
+            <article key={option.value} className="grid gap-4 border border-slate-200 bg-slate-50 p-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#078b8b]">{categoryLabel}</p>
+                <h4 className="mt-1 text-sm font-semibold text-slate-950">{option.label}</h4>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+                <div className="grid content-start gap-2">
+                  <div className="relative aspect-[4/5] overflow-hidden border border-slate-200 bg-white">
+                    {card?.image ? (
+                      <Image src={card.image} alt={card.title} fill sizes="180px" className="object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center px-4 text-center text-xs leading-5 text-slate-400">尚未上传系列图片</div>
+                    )}
+                  </div>
+                  <label className={`inline-flex items-center justify-center gap-2 border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 ${uploadingSlug ? "cursor-wait opacity-60" : "cursor-pointer"}`}>
+                    <UploadCloud className="h-4 w-4" />
+                    {uploading ? "上传中..." : card?.image ? "替换图片" : "上传图片"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploadingSlug !== null}
+                      onChange={(event) => {
+                        const input = event.currentTarget;
+                        const file = input.files?.[0];
+                        input.value = "";
+                        if (file) void uploadCardImage(option.value, file);
+                      }}
+                    />
+                  </label>
+                  {card?.image ? (
+                    <button
+                      type="button"
+                      className="border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => updateCard(option.value, { image: "" })}
+                    >
+                      删除图片
+                    </button>
+                  ) : null}
+                </div>
+                <div className="grid content-start gap-4">
+                  <TextBlock label="主标题" value={card?.title ?? option.label} onChange={(value) => updateCard(option.value, { title: value })} />
+                  <label className={labelClass}>
+                    副标题
+                    <textarea
+                      className={inputClass}
+                      rows={4}
+                      value={card?.subtitle ?? ""}
+                      onChange={(event) => updateCard(option.value, { subtitle: event.target.value })}
+                    />
+                  </label>
+                </div>
+              </div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );

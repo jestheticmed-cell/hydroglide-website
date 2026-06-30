@@ -1,6 +1,12 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { getSupabaseClient } from "./supabase";
 
+export type HomeSeriesCard = {
+  image: string;
+  title: string;
+  subtitle: string;
+};
+
 export type HomeContent = {
   hero: {
     videoSrc: string;
@@ -10,7 +16,7 @@ export type HomeContent = {
   productLines: {
     title: string;
     copy: string;
-    featuredProductSlugs: Record<string, string>;
+    cards: Record<string, HomeSeriesCard>;
     heroVideos: Record<string, string>;
   };
   bestSellers: {
@@ -31,13 +37,29 @@ export const fallbackHomeContent: HomeContent = {
     copy: "The all-in-one efoil, glide effortlessly above waves, your ultimate gear for every water adventure"
   },
   productLines: {
-    title: "EFOIL LINE",
-    copy: "From leisurely floating to fast precise carving, EFOIL LINE creates rides tailored to every rider.\nEngineered for seamless glide, our complete eFoil range turns every water surface into your playground.",
-    featuredProductSlugs: {
-      "lift-5f": "lift-5f-cruiser",
-      "lift-5": "lift-5-carbon",
-      "boards": "underwater-treadmill-l800",
-      "masts": "portable-underwater-treadmill-p200"
+    title: "Hydro Therapy & Sport Equipment Series",
+    copy: "Purpose-built hydrotherapy and aquatic training systems for recovery, mobility, and performance.\nExplore four equipment series designed for different treatment and training intensities.",
+    cards: {
+      "lift-5f": {
+        image: "",
+        title: "Mobility Therapy Devices",
+        subtitle: "Foundational aquatic mobility systems."
+      },
+      "lift-5": {
+        image: "",
+        title: "Multi-Functional Therapeutic Apparatus",
+        subtitle: "Versatile therapeutic systems for structured recovery."
+      },
+      "boards": {
+        image: "",
+        title: "Moderate Training Gear",
+        subtitle: "Stable, controlled aquatic training systems."
+      },
+      "masts": {
+        image: "",
+        title: "High-Intensity Hydro System",
+        subtitle: "Power-focused systems for advanced aquatic training."
+      }
     },
     heroVideos: {
       "lift-5f": "/videos/lift5F.mp4"
@@ -55,6 +77,17 @@ export const fallbackHomeContent: HomeContent = {
 };
 
 export function mergeHomeContent(content?: Partial<HomeContent> | null): HomeContent {
+  const storedCards = content?.productLines?.cards ?? {};
+  const cards = Object.fromEntries(
+    Object.entries(fallbackHomeContent.productLines.cards).map(([slug, fallbackCard]) => [
+      slug,
+      {
+        ...fallbackCard,
+        ...storedCards[slug]
+      }
+    ])
+  );
+
   return {
     hero: {
       ...fallbackHomeContent.hero,
@@ -63,10 +96,7 @@ export function mergeHomeContent(content?: Partial<HomeContent> | null): HomeCon
     productLines: {
       ...fallbackHomeContent.productLines,
       ...content?.productLines,
-      featuredProductSlugs: {
-        ...fallbackHomeContent.productLines.featuredProductSlugs,
-        ...content?.productLines?.featuredProductSlugs
-      },
+      cards,
       heroVideos: {
         ...fallbackHomeContent.productLines.heroVideos,
         ...content?.productLines?.heroVideos
