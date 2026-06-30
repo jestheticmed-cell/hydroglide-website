@@ -110,7 +110,8 @@ type AdminData = {
 };
 
 type ModuleKey = "dashboard" | "products" | "orders" | "customers" | "marketing" | "support";
-type ProductSectionKey = "products" | "best-sellers" | "lines" | "list-pages" | "home" | "slides" | "reviews" | "media";
+type ProductSectionKey = "products" | "best-sellers" | "home-config" | "list-pages";
+type ProductSectionGroupKey = "catalog" | "pages";
 
 const modules: Array<{ key: ModuleKey; label: string; description: string; icon: typeof BarChart3 }> = [
   { key: "dashboard", label: "仪表盘", description: "数据看板", icon: BarChart3 },
@@ -121,14 +122,27 @@ const modules: Array<{ key: ModuleKey; label: string; description: string; icon:
   { key: "support", label: "客服消息", description: "消息、回复、存档", icon: MessageSquareText }
 ];
 
-const productSections: Array<{ key: ProductSectionKey; label: string }> = [
-  { key: "products", label: "商品管理" },
-  { key: "best-sellers", label: "Best Seller 设置" },
-  { key: "list-pages", label: "产品系列 / 列表页管理" },
-  { key: "home", label: "首页文案" },
-  { key: "slides", label: "轮播图" },
-  { key: "reviews", label: "评价" },
-  { key: "media", label: "图片上传" }
+const productSectionGroups: Array<{
+  key: ProductSectionGroupKey;
+  label: string;
+  children: Array<{ key: ProductSectionKey; label: string }>;
+}> = [
+  {
+    key: "catalog",
+    label: "商品管理",
+    children: [
+      { key: "products", label: "商品管理" },
+      { key: "best-sellers", label: "Best Seller 设置" }
+    ]
+  },
+  {
+    key: "pages",
+    label: "页面管理",
+    children: [
+      { key: "home-config", label: "首页配置管理" },
+      { key: "list-pages", label: "产品列表页管理" }
+    ]
+  }
 ];
 
 const moduleSubmenus: Record<Exclude<ModuleKey, "products">, Array<{ key: string; label: string }>> = {
@@ -653,7 +667,6 @@ async function uploadFile(file: File) {
           <nav className="grid gap-1">
             {modules.map((module) => {
               const Icon = module.icon;
-              const submenu = module.key === "products" ? productSections : moduleSubmenus[module.key];
               return (
                 <div key={module.key} className="grid gap-1">
                   <button
@@ -669,40 +682,57 @@ async function uploadFile(file: File) {
                   </button>
                   {activeModule === module.key ? (
                     <div className="ml-5 border-l border-slate-200 py-1 pl-2">
-                      {submenu.map((item) => {
-                        const activeChild =
-                          module.key === "products"
-                            ? activeProductSection === item.key
-                            : activeModuleSubmenu[module.key] === item.key;
-                        return (
-                          <button
-                            key={item.key}
-                            type="button"
-                            onClick={() => {
-                              setActiveModule(module.key);
-                              if (module.key === "products") {
-                                setActiveProductSection(item.key as ProductSectionKey);
-                              } else {
-                                setActiveModuleSubmenu((current) => ({ ...current, [module.key]: item.key }));
-                              }
-                            }}
-                            className={`block w-full px-3 py-2 text-left text-sm transition ${
-                              activeChild ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        );
-                      })}
+                      {module.key === "products"
+                        ? productSectionGroups.map((group) => (
+                            <div key={group.key} className="mb-2 last:mb-0">
+                              <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
+                              <div className="grid gap-1">
+                                {group.children.map((item) => {
+                                  const activeChild = activeProductSection === item.key;
+                                  return (
+                                    <button
+                                      key={item.key}
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveModule(module.key);
+                                        setActiveProductSection(item.key);
+                                      }}
+                                      className={`block w-full px-3 py-2 text-left text-sm transition ${
+                                        activeChild ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                                      }`}
+                                    >
+                                      {item.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))
+                        : moduleSubmenus[module.key].map((item) => {
+                            const submenuKey = module.key as Exclude<ModuleKey, "products">;
+                            const activeChild = activeModuleSubmenu[submenuKey] === item.key;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => {
+                                  setActiveModule(module.key);
+                                  setActiveModuleSubmenu((current) => ({ ...current, [submenuKey]: item.key }));
+                                }}
+                                className={`block w-full px-3 py-2 text-left text-sm transition ${
+                                  activeChild ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                                }`}
+                              >
+                                {item.label}
+                              </button>
+                            );
+                          })}
                     </div>
                   ) : null}
                 </div>
               );
             })}
           </nav>
-          <button type="button" onClick={addProduct} className="mt-3 inline-flex w-full items-center justify-center gap-2 border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
-            <Plus className="h-4 w-4" /> 新增产品
-          </button>
         </aside>
 
         <section className="min-w-0 bg-white p-4 shadow-sm">
@@ -739,9 +769,12 @@ async function uploadFile(file: File) {
             </div>
           ) : null}
 
-          {activeModule === "products" && activeProductSection === "home" && data ? (
+          {activeModule === "products" && activeProductSection === "home-config" && data ? (
             <div className="grid gap-5">
-              <SectionTitle title="首页文案与推荐产品" />
+              <SectionTitle title="首页配置管理" />
+              <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                这里统一管理首页文案、Hero 图片/视频、首页轮播图、评论评级和素材上传，不再拆分多个入口。
+              </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <label className={labelClass}>首页视频地址<input className={inputClass} value={data.homeContent.hero.videoSrc} onChange={(event) => updateHome({ ...data.homeContent, hero: { ...data.homeContent.hero, videoSrc: event.target.value } })} /></label>
                 <label className={labelClass}>Hero 标题<input className={inputClass} value={data.homeContent.hero.title} onChange={(event) => updateHome({ ...data.homeContent, hero: { ...data.homeContent.hero, title: event.target.value } })} /></label>
@@ -762,6 +795,57 @@ async function uploadFile(file: File) {
                 <label className={labelClass}>评价区文案<textarea className={inputClass} rows={4} value={data.homeContent.reviews.copy} onChange={(event) => updateHome({ ...data.homeContent, reviews: { ...data.homeContent.reviews, copy: event.target.value } })} /></label>
               </div>
               <button type="button" disabled={saving} onClick={saveHome} className={buttonClass}><Save className="h-4 w-4" /> 保存首页文案</button>
+
+              <div className="border-t border-slate-200 pt-6">
+                <SectionTitle title="首页轮播图管理" />
+                <p className="mt-2 text-sm text-slate-500">维护首页 Hero 轮播的图片、标题、文案和排序。</p>
+              </div>
+              {slide ? (
+                <RecordEditor items={data.heroSlides} selected={selected.slides} labelKey="title" onSelect={(index) => setSelected((current) => ({ ...current, slides: index }))}>
+                  <div className="grid gap-4">
+                    <TextBlock label="图片 URL" value={slide.image} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, image: value })} />
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <TextBlock label="眉标" value={slide.eyebrow} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, eyebrow: value })} />
+                      <TextBlock label="标题" value={slide.title} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, title: value })} />
+                    </div>
+                    <label className={labelClass}>文案<textarea className={inputClass} rows={4} value={slide.copy} onChange={(event) => updateCollection("heroSlides", selected.slides, { ...slide, copy: event.target.value })} /></label>
+                    <ToggleRow active={slide.is_active} order={slide.sort_order} onActive={(value) => updateCollection("heroSlides", selected.slides, { ...slide, is_active: value })} onOrder={(value) => updateCollection("heroSlides", selected.slides, { ...slide, sort_order: value })} />
+                    <button type="button" disabled={saving} onClick={() => saveRecord("hero_slides", slide, "轮播图已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存轮播图</button>
+                  </div>
+                </RecordEditor>
+              ) : null}
+
+              <div className="border-t border-slate-200 pt-6">
+                <SectionTitle title="首页评价 / 评级管理" />
+                <p className="mt-2 text-sm text-slate-500">统一管理首页 Reviews 区块的姓名、地区、评分和评价内容。</p>
+              </div>
+              {review ? (
+                <RecordEditor items={data.reviews} selected={selected.reviews} labelKey="author_name" onSelect={(index) => setSelected((current) => ({ ...current, reviews: index }))}>
+                  <div className="grid gap-4">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <TextBlock label="姓名" value={review.author_name} onChange={(value) => updateCollection("reviews", selected.reviews, { ...review, author_name: value })} />
+                      <TextBlock label="地区" value={review.location} onChange={(value) => updateCollection("reviews", selected.reviews, { ...review, location: value })} />
+                      <label className={labelClass}>评分<input className={inputClass} type="number" min={1} max={5} value={review.rating} onChange={(event) => updateCollection("reviews", selected.reviews, { ...review, rating: Number(event.target.value) })} /></label>
+                    </div>
+                    <label className={labelClass}>评价内容<textarea className={inputClass} rows={4} value={review.body} onChange={(event) => updateCollection("reviews", selected.reviews, { ...review, body: event.target.value })} /></label>
+                    <ToggleRow active={review.is_active} order={review.sort_order} onActive={(value) => updateCollection("reviews", selected.reviews, { ...review, is_active: value })} onOrder={(value) => updateCollection("reviews", selected.reviews, { ...review, sort_order: value })} />
+                    <button type="button" disabled={saving} onClick={() => saveRecord("reviews", review, "评价已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存评价</button>
+                  </div>
+                </RecordEditor>
+              ) : null}
+
+              <div className="border-t border-slate-200 pt-6">
+                <SectionTitle title="首页素材上传" />
+                <p className="mt-2 text-sm text-slate-500">上传首页需要用到的图片素材，上传后会返回公开 URL，可直接用于首页或产品列表页配置。</p>
+              </div>
+              <form onSubmit={uploadImage} className="grid gap-4 border border-dashed border-slate-300 p-6">
+                <ImagePlus className="h-8 w-8 text-[#078b8b]" />
+                <label className={labelClass}>选择网页图片<input className={inputClass} name="file" type="file" accept="image/*" /></label>
+                <button type="submit" disabled={saving} className={buttonClass}><UploadCloud className="h-4 w-4" /> 上传到素材库</button>
+              </form>
+              {uploadUrl ? (
+                <label className={labelClass}>上传后的公开 URL<input className={inputClass} readOnly value={uploadUrl} onFocus={(event) => event.currentTarget.select()} /></label>
+              ) : null}
             </div>
           ) : null}
 
@@ -772,21 +856,6 @@ async function uploadFile(file: File) {
               onChange={(products) => setData((current) => (current ? { ...current, products } : current))}
               onSave={(products) => void saveBestSellerSettings(products)}
             />
-          ) : null}
-
-          {activeModule === "products" && activeProductSection === "slides" && slide ? (
-            <RecordEditor items={data?.heroSlides ?? []} selected={selected.slides} labelKey="title" onSelect={(index) => setSelected((current) => ({ ...current, slides: index }))}>
-              <div className="grid gap-4">
-                <TextBlock label="图片 URL" value={slide.image} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, image: value })} />
-                <div className="grid gap-4 md:grid-cols-2">
-                  <TextBlock label="眉标" value={slide.eyebrow} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, eyebrow: value })} />
-                  <TextBlock label="标题" value={slide.title} onChange={(value) => updateCollection("heroSlides", selected.slides, { ...slide, title: value })} />
-                </div>
-                <label className={labelClass}>文案<textarea className={inputClass} rows={4} value={slide.copy} onChange={(event) => updateCollection("heroSlides", selected.slides, { ...slide, copy: event.target.value })} /></label>
-                <ToggleRow active={slide.is_active} order={slide.sort_order} onActive={(value) => updateCollection("heroSlides", selected.slides, { ...slide, is_active: value })} onOrder={(value) => updateCollection("heroSlides", selected.slides, { ...slide, sort_order: value })} />
-                <button type="button" disabled={saving} onClick={() => saveRecord("hero_slides", slide, "轮播图已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存轮播图</button>
-              </div>
-            </RecordEditor>
           ) : null}
 
           {activeModule === "products" && activeProductSection === "list-pages" && activeListPageEntry && data ? (
@@ -811,43 +880,25 @@ async function uploadFile(file: File) {
           ) : null}
 
           {activeModule === "products" && activeProductSection === "products" && product ? (
-            <RecordEditor items={data?.products ?? []} selected={selected.products} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, products: index }))}>
-              <ProductForm
-                product={product}
-                saving={saving}
-                update={(next) => updateCollection("products", selected.products, next)}
-                save={() => saveRecord("products", product, "产品已保存")}
-                uploadFile={uploadFile}
-              />
-            </RecordEditor>
-          ) : null}
-
-          {activeModule === "products" && activeProductSection === "reviews" && review ? (
-            <RecordEditor items={data?.reviews ?? []} selected={selected.reviews} labelKey="author_name" onSelect={(index) => setSelected((current) => ({ ...current, reviews: index }))}>
-              <div className="grid gap-4">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <TextBlock label="姓名" value={review.author_name} onChange={(value) => updateCollection("reviews", selected.reviews, { ...review, author_name: value })} />
-                  <TextBlock label="地区" value={review.location} onChange={(value) => updateCollection("reviews", selected.reviews, { ...review, location: value })} />
-                  <label className={labelClass}>评分<input className={inputClass} type="number" min={1} max={5} value={review.rating} onChange={(event) => updateCollection("reviews", selected.reviews, { ...review, rating: Number(event.target.value) })} /></label>
-                </div>
-                <label className={labelClass}>评价内容<textarea className={inputClass} rows={4} value={review.body} onChange={(event) => updateCollection("reviews", selected.reviews, { ...review, body: event.target.value })} /></label>
-                <ToggleRow active={review.is_active} order={review.sort_order} onActive={(value) => updateCollection("reviews", selected.reviews, { ...review, is_active: value })} onOrder={(value) => updateCollection("reviews", selected.reviews, { ...review, sort_order: value })} />
-                <button type="button" disabled={saving} onClick={() => saveRecord("reviews", review, "评价已保存")} className={buttonClass}><Save className="h-4 w-4" /> 保存评价</button>
-              </div>
-            </RecordEditor>
-          ) : null}
-
-          {activeModule === "products" && activeProductSection === "media" ? (
             <div className="grid gap-5">
-              <SectionTitle title="图片上传" />
-              <form onSubmit={uploadImage} className="grid gap-4 border border-dashed border-slate-300 p-6">
-                <ImagePlus className="h-8 w-8 text-[#078b8b]" />
-                <label className={labelClass}>选择网页图片<input className={inputClass} name="file" type="file" accept="image/*" /></label>
-                <button type="submit" disabled={saving} className={buttonClass}><UploadCloud className="h-4 w-4" /> 上传到素材库</button>
-              </form>
-              {uploadUrl ? (
-                <label className={labelClass}>上传后的公开 URL<input className={inputClass} readOnly value={uploadUrl} onFocus={(event) => event.currentTarget.select()} /></label>
-              ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <SectionTitle title="商品管理" />
+                  <p className="mt-2 text-sm text-slate-500">在这里维护商品资料、图片、价格、详情卖点和参数内容。新增产品功能已整合在这里。</p>
+                </div>
+                <button type="button" onClick={addProduct} className="inline-flex items-center justify-center gap-2 border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+                  <Plus className="h-4 w-4" /> 新增产品
+                </button>
+              </div>
+              <RecordEditor items={data?.products ?? []} selected={selected.products} labelKey="name" onSelect={(index) => setSelected((current) => ({ ...current, products: index }))}>
+                <ProductForm
+                  product={product}
+                  saving={saving}
+                  update={(next) => updateCollection("products", selected.products, next)}
+                  save={() => saveRecord("products", product, "产品已保存")}
+                  uploadFile={uploadFile}
+                />
+              </RecordEditor>
             </div>
           ) : null}
         </section>
