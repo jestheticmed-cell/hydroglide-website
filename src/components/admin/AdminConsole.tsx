@@ -1046,7 +1046,8 @@ function ListPageSettingsPanel({
   }
 
   async function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.currentTarget.files ?? []);
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
     if (!files.length) return;
 
     setUploadingImages(true);
@@ -1060,13 +1061,14 @@ function ListPageSettingsPanel({
     } catch (error) {
       setAssetError(error instanceof Error ? error.message : "轮播图上传失败");
     } finally {
-      event.currentTarget.value = "";
       setUploadingImages(false);
+      input.value = "";
     }
   }
 
   async function handleVideoUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
     setUploadingVideo(true);
@@ -1077,8 +1079,8 @@ function ListPageSettingsPanel({
     } catch (error) {
       setAssetError(error instanceof Error ? error.message : "视频上传失败");
     } finally {
-      event.currentTarget.value = "";
       setUploadingVideo(false);
+      input.value = "";
     }
   }
 
