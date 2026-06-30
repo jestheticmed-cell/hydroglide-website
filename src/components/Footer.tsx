@@ -19,7 +19,7 @@ export function Footer() {
     { href: "/return-policy", label: "Return Policy" }
   ];
   const productLinks = [
-    { href: "/#efoils", label: "Efoil Line" },
+    { href: "/#efoils", label: "Hydro Therapy&Sport" },
     { href: "/#best-sellers", label: "Best Sellers" },
     { href: "/#accessories", label: "Accessories" }
   ];
