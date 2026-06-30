@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { fallbackHomeContent } from "@/lib/site-content";
+import { fallbackHomeContent, mergeHomeContent, type HomeContent } from "@/lib/site-content";
 import { verifyAdminRequest } from "@/lib/admin-auth";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
 import { storefrontLineConfigs } from "@/lib/product-line-config";
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     configured: warnings.length === 0,
-    homeContent: homeContentResult.data?.content ?? fallbackHomeContent,
+    homeContent: mergeHomeContent(homeContentResult.data?.content as Partial<HomeContent> | undefined),
     heroSlides: heroSlideRows,
     productLines: mergeAdminProductLines(lineRows as Record<string, unknown>[]),
     products: productRows,

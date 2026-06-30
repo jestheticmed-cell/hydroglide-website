@@ -804,7 +804,10 @@ async function uploadFile(file: File) {
                 <TextBlock label="产品系列标题" value={data.homeContent.productLines.title} onChange={(value) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, title: value } })} />
                 <TextBlock label="热卖标题" value={data.homeContent.bestSellers.title} onChange={(value) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, title: value } })} />
               </div>
-              <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className={labelClass}>产品系列文案<textarea className={inputClass} rows={4} value={data.homeContent.productLines.copy} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, copy: event.target.value } })} /></label>
+                <label className={labelClass}>热卖区文案<textarea className={inputClass} rows={4} value={data.homeContent.bestSellers.copy} onChange={(event) => updateHome({ ...data.homeContent, bestSellers: { ...data.homeContent.bestSellers, copy: event.target.value } })} /></label>
+              </div>
               <label className={labelClass}>首页系列推荐商品（每行 系列slug: 产品slug）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.featuredProductSlugs)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, featuredProductSlugs: textToKeyValues(event.target.value) } })} /></label>
               <label className={labelClass}>系列页视频地址（每行 系列slug: 视频URL）<textarea className={inputClass} rows={4} value={specsToText(data.homeContent.productLines.heroVideos)} onChange={(event) => updateHome({ ...data.homeContent, productLines: { ...data.homeContent.productLines, heroVideos: textToKeyValues(event.target.value) } })} /></label>
               <div className="border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">

@@ -54,6 +54,35 @@ export const fallbackHomeContent: HomeContent = {
   }
 };
 
+export function mergeHomeContent(content?: Partial<HomeContent> | null): HomeContent {
+  return {
+    hero: {
+      ...fallbackHomeContent.hero,
+      ...content?.hero
+    },
+    productLines: {
+      ...fallbackHomeContent.productLines,
+      ...content?.productLines,
+      featuredProductSlugs: {
+        ...fallbackHomeContent.productLines.featuredProductSlugs,
+        ...content?.productLines?.featuredProductSlugs
+      },
+      heroVideos: {
+        ...fallbackHomeContent.productLines.heroVideos,
+        ...content?.productLines?.heroVideos
+      }
+    },
+    bestSellers: {
+      ...fallbackHomeContent.bestSellers,
+      ...content?.bestSellers
+    },
+    reviews: {
+      ...fallbackHomeContent.reviews,
+      ...content?.reviews
+    }
+  };
+}
+
 export async function getHomeContent(): Promise<HomeContent> {
   noStore();
   const supabase = getSupabaseClient();
@@ -66,5 +95,5 @@ export async function getHomeContent(): Promise<HomeContent> {
     .maybeSingle();
 
   if (error || !data?.content) return fallbackHomeContent;
-  return { ...fallbackHomeContent, ...(data.content as Partial<HomeContent>) };
+  return mergeHomeContent(data.content as Partial<HomeContent>);
 }
