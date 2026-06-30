@@ -28,7 +28,7 @@ export function CategoryHero({ line, videoSrc }: CategoryHeroProps) {
         {videoSrc ? (
           <>
             <video className="absolute inset-0 h-full w-full object-cover" src={videoSrc} autoPlay muted loop playsInline preload="metadata" />
-            <div className="absolute inset-0 bg-black/35" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           </>
         ) : (
           line.heroImages.map((image, index) => (
@@ -37,12 +37,12 @@ export function CategoryHero({ line, videoSrc }: CategoryHeroProps) {
               className={`absolute inset-0 transition-opacity duration-700 ${index === active ? "opacity-100" : "opacity-0"}`}
             >
               <Image src={image} alt="" fill priority={index === 0} sizes="100vw" className="object-cover" />
-              <div className="absolute inset-0 bg-black/35" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
             </div>
           ))
         )}
         <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-5 pb-12 sm:px-8 lg:px-10">
-          <div className="max-w-3xl text-white">
+          <div className="max-w-3xl text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">{line.eyebrow}</p>
             <h1 className="mt-4 text-5xl font-semibold leading-none sm:text-7xl">{line.name}</h1>
           </div>

@@ -30,10 +30,10 @@ export function HeroCarousel({ slides, video }: HeroCarouselProps) {
         <video className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata">
           <source src={video.videoSrc} type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-gradient-to-r from-black/65 via-black/30 to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-transparent to-transparent" />
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100vh-88px)] max-w-7xl items-center px-5 py-24 sm:px-8 lg:px-10">
-          <div className="max-w-4xl">
+          <div className="max-w-4xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
             <h1 className="max-w-5xl text-5xl font-semibold leading-[0.98] text-white sm:text-7xl lg:text-8xl">{video.title}</h1>
             <p className="mt-7 max-w-3xl text-base leading-7 text-white/80 sm:text-xl">{video.copy}</p>
           </div>
@@ -51,12 +51,12 @@ export function HeroCarousel({ slides, video }: HeroCarouselProps) {
           aria-hidden={index !== active}
         >
           <Image src={slide.image} alt="" fill priority={index === 0} sizes="100vw" className="object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-transparent to-transparent" />
         </div>
       ))}
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-73px)] max-w-7xl items-center px-5 py-24 sm:px-8 lg:px-10">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]">
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{slides[active]?.eyebrow}</p>
           <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[0.98] text-white sm:text-7xl lg:text-8xl">
             {slides[active]?.title}
