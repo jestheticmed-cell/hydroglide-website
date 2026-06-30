@@ -15,6 +15,10 @@ const lineOptionsByCategory = storefrontLineOptionsByCategory as Record<ProductC
 const storefrontLineOptions = (Object.entries(lineOptionsByCategory) as Array<[ProductCategory, Array<{ label: string; value: ProductLineSlug }>]>)
   .flatMap(([category, options]) => options.map((option) => ({ category, ...option })));
 
+function getProductLineDisplayName(slug: ProductLineSlug) {
+  return storefrontLineOptions.find((option) => option.value === slug)?.label ?? slug;
+}
+
 type HeroSlideRow = {
   id: string;
   image: string;
@@ -1223,7 +1227,7 @@ function BestSellerSettingsPanel({
               <article key={product.id} className="flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-950">{product.name}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{product.line_slug}</p>
+                  <p className="mt-1 text-xs tracking-[0.08em] text-slate-500">{getProductLineDisplayName(product.line_slug)}</p>
                 </div>
                 <button
                   type="button"
@@ -1249,7 +1253,7 @@ function BestSellerSettingsPanel({
               <article key={product.id} className="flex flex-wrap items-center justify-between gap-3 border border-slate-200 bg-white px-4 py-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-950">{product.name}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate-500">{product.line_slug}</p>
+                  <p className="mt-1 text-xs tracking-[0.08em] text-slate-500">{getProductLineDisplayName(product.line_slug)}</p>
                 </div>
                 <button
                   type="button"
