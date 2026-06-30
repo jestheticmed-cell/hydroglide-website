@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { Archive, BarChart3, Bell, Boxes, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
+import { Archive, BarChart3, Bell, Boxes, ChevronDown, ChevronRight, ClipboardList, ImagePlus, Loader2, Megaphone, MessageSquareText, Plus, Reply, Save, UploadCloud, Users } from "lucide-react";
 import { fallbackHomeContent, type HomeContent } from "@/lib/site-content";
 import { heroSlides, productLines, products, reviews } from "@/lib/fallback-data";
 import { storefrontLineOptionsByCategory, type ProductCategory } from "@/lib/product-line-config";
@@ -322,6 +322,7 @@ export function AdminConsole() {
   const [adminToken, setAdminToken] = useState("");
   const [activeModule, setActiveModule] = useState<ModuleKey>("dashboard");
   const [activeProductSection, setActiveProductSection] = useState<ProductSectionKey>("products");
+  const [expandedProductGroup, setExpandedProductGroup] = useState<ProductSectionGroupKey | null>(null);
   const [activeModuleSubmenu, setActiveModuleSubmenu] = useState<Record<Exclude<ModuleKey, "products">, string>>({
     dashboard: "overview",
     orders: "all",
@@ -671,7 +672,10 @@ async function uploadFile(file: File) {
                 <div key={module.key} className="grid gap-1">
                   <button
                     type="button"
-                    onClick={() => setActiveModule(module.key)}
+                    onClick={() => {
+                      setActiveModule(module.key);
+                      if (module.key === "products") setExpandedProductGroup(null);
+                    }}
                     className={`flex items-start gap-3 px-3 py-2.5 text-left transition ${activeModule === module.key ? "bg-[#078b8b] text-white" : "text-slate-700 hover:bg-slate-100"}`}
                   >
                     <Icon className="mt-0.5 h-4 w-4 shrink-0" />
@@ -683,31 +687,47 @@ async function uploadFile(file: File) {
                   {activeModule === module.key ? (
                     <div className="ml-5 border-l border-slate-200 py-1 pl-2">
                       {module.key === "products"
-                        ? productSectionGroups.map((group) => (
-                            <div key={group.key} className="mb-2 last:mb-0">
-                              <p className="px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{group.label}</p>
-                              <div className="grid gap-1">
-                                {group.children.map((item) => {
-                                  const activeChild = activeProductSection === item.key;
-                                  return (
-                                    <button
-                                      key={item.key}
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveModule(module.key);
-                                        setActiveProductSection(item.key);
-                                      }}
-                                      className={`block w-full px-3 py-2 text-left text-sm transition ${
-                                        activeChild ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
-                                      }`}
-                                    >
-                                      {item.label}
-                                    </button>
-                                  );
-                                })}
+                        ? productSectionGroups.map((group) => {
+                            const expanded = expandedProductGroup === group.key;
+                            const containsActiveSection = group.children.some((item) => item.key === activeProductSection);
+                            return (
+                              <div key={group.key} className="mb-1 last:mb-0">
+                                <button
+                                  type="button"
+                                  aria-expanded={expanded}
+                                  onClick={() => setExpandedProductGroup(expanded ? null : group.key)}
+                                  className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm font-semibold transition ${
+                                    expanded ? "bg-slate-100 text-slate-950" : containsActiveSection ? "text-[#078b8b]" : "text-slate-700 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  <span>{group.label}</span>
+                                  {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </button>
+                                {expanded ? (
+                                  <div className="ml-3 mt-1 grid gap-1 border-l border-slate-200 pl-2">
+                                    {group.children.map((item) => {
+                                      const activeChild = activeProductSection === item.key;
+                                      return (
+                                        <button
+                                          key={item.key}
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveModule(module.key);
+                                            setActiveProductSection(item.key);
+                                          }}
+                                          className={`block w-full px-3 py-2 text-left text-sm transition ${
+                                            activeChild ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                                          }`}
+                                        >
+                                          {item.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                ) : null}
                               </div>
-                            </div>
-                          ))
+                            );
+                          })
                         : moduleSubmenus[module.key].map((item) => {
                             const submenuKey = module.key as Exclude<ModuleKey, "products">;
                             const activeChild = activeModuleSubmenu[submenuKey] === item.key;
