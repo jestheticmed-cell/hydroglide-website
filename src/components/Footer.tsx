@@ -18,10 +18,10 @@ export function Footer() {
     { href: "/privacy-policy", label: "Privacy Policy" },
     { href: "/return-policy", label: "Return Policy" }
   ];
-  const productLinks = [
+  const productLinks: Array<{ href?: string; label: string }> = [
     { href: "/#efoils", label: "Hydro Therapy&Sport" },
     { href: "/#best-sellers", label: "Best Sellers" },
-    { href: "/#accessories", label: "Accessories" }
+    { label: "New Arrivals" }
   ];
 
   function handleSubscribe(event: FormEvent<HTMLFormElement>) {
@@ -98,9 +98,13 @@ export function Footer() {
             <h2 className="text-[21px] font-normal text-ink">Product Quick Links</h2>
             <nav className="mt-5 grid gap-3 text-[15px] font-normal text-graphite" aria-label="Product quick links">
               {productLinks.map((link) => (
-                <Link key={link.label} href={link.href} className="w-fit transition hover:text-blue-600">
-                  {link.label}
-                </Link>
+                link.href ? (
+                  <Link key={link.label} href={link.href} className="w-fit transition hover:text-blue-600">
+                    {link.label}
+                  </Link>
+                ) : (
+                  <span key={link.label} className="w-fit">{link.label}</span>
+                )
               ))}
             </nav>
           </div>
