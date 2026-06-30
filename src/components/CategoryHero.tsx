@@ -49,7 +49,7 @@ export function CategoryHero({ line, videoSrc }: CategoryHeroProps) {
         </div>
       </div>
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-10">
-        <p className="max-w-3xl text-base leading-7 text-graphite">{line.description}</p>
+        <p className="w-full max-w-5xl text-base leading-7 text-graphite">{line.description}</p>
       </div>
     </section>
   );
