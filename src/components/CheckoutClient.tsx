@@ -24,6 +24,7 @@ type CheckoutErrors = Partial<Record<RequiredFieldName, string>>;
 type CountryOption = { isoCode: string; name: string };
 type StateOption = { isoCode: string; name: string };
 type CityOption = { name: string };
+const manualOptionValue = "__manual__";
 
 export function CheckoutClient() {
   const { items, subtotalCents, openCart } = useCart();
@@ -32,8 +33,10 @@ export function CheckoutClient() {
   const [states, setStates] = useState<StateOption[]>([]);
   const [cities, setCities] = useState<CityOption[]>([]);
   const [countryCode, setCountryCode] = useState("US");
+  const [manualCountry, setManualCountry] = useState("");
   const [stateCode, setStateCode] = useState("");
   const [city, setCity] = useState("");
+  const [manualCity, setManualCity] = useState(false);
   const [loadingCountries, setLoadingCountries] = useState(true);
   const [loadingRegions, setLoadingRegions] = useState(true);
   const [loadingCities, setLoadingCities] = useState(false);
@@ -62,12 +65,26 @@ export function CheckoutClient() {
   }, []);
 
   useEffect(() => {
+    if (countryCode === manualOptionValue) {
+      setLoadingRegions(false);
+      setLoadingCities(false);
+      setStateCode("");
+      setCity("");
+      setManualCity(false);
+      setStates([]);
+      setCities([]);
+      setErrors((current) => ({ ...current, state: undefined, city: undefined }));
+      setLocationError("");
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadRegions() {
       setLoadingRegions(true);
       setStateCode("");
       setCity("");
+      setManualCity(false);
       setStates([]);
       setCities([]);
       setErrors((current) => ({ ...current, state: undefined, city: undefined }));
@@ -92,7 +109,7 @@ export function CheckoutClient() {
   }, [countryCode]);
 
   useEffect(() => {
-    if (!stateCode) {
+    if (!stateCode || countryCode === manualOptionValue) {
       setLoadingCities(false);
       return;
     }
@@ -101,6 +118,7 @@ export function CheckoutClient() {
     async function loadCities() {
       setLoadingCities(true);
       setCity("");
+      setManualCity(false);
       setCities([]);
       setErrors((current) => ({ ...current, city: undefined }));
       setLocationError("");
@@ -218,12 +236,13 @@ export function CheckoutClient() {
                 <label className="relative block">
                   <span className="absolute left-4 top-2 text-xs text-graphite">Country/Region</span>
                   <select
-                    name="country"
+                    name={countryCode === manualOptionValue ? undefined : "country"}
                     value={countryCode}
                     disabled={loadingCountries}
                     onChange={(event) => {
                       setStateCode("");
                       setCities([]);
+                      setManualCity(false);
                       setCountryCode(event.target.value);
                     }}
                     className="h-16 w-full appearance-none rounded-lg border border-line bg-white px-4 pt-5 text-base text-ink outline-none disabled:cursor-wait disabled:text-graphite"
@@ -232,9 +251,19 @@ export function CheckoutClient() {
                     {countries.map((country) => (
                       <option key={country.isoCode} value={country.isoCode}>{country.name}</option>
                     ))}
+                    <option value={manualOptionValue}>Other / Enter manually</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-graphite" aria-hidden="true" />
                 </label>
+                {countryCode === manualOptionValue ? (
+                  <input
+                    name="country"
+                    value={manualCountry}
+                    onChange={(event) => setManualCountry(event.target.value)}
+                    placeholder="Enter country / region"
+                    className="h-14 rounded-lg border border-line bg-white px-4 text-base outline-none focus:border-[#41b8ae]"
+                  />
+                ) : null}
                 {locationError ? <p className="text-[15px] leading-5 text-[#d83b0d]">{locationError}. You can still enter the address manually.</p> : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
@@ -256,10 +285,18 @@ export function CheckoutClient() {
                   <div>
                     {loadingRegions || loadingCities || (states.length > 0 && !stateCode) || cities.length > 0 ? (
                       <select
-                        name="city"
-                        value={city}
+                        name={manualCity ? undefined : "city"}
+                        value={manualCity ? manualOptionValue : city}
                         disabled={loadingRegions || loadingCities || (states.length > 0 && !stateCode)}
-                        onChange={(event) => setCity(event.target.value)}
+                        onChange={(event) => {
+                          if (event.target.value === manualOptionValue) {
+                            setManualCity(true);
+                            setCity("");
+                            return;
+                          }
+                          setManualCity(false);
+                          setCity(event.target.value);
+                        }}
                         className={`h-14 w-full rounded-lg border bg-white px-4 text-base text-graphite outline-none focus:border-[#41b8ae] disabled:cursor-wait ${
                           errors.city ? "border-[#d83b0d]" : "border-line"
                         }`}
@@ -276,10 +313,20 @@ export function CheckoutClient() {
                         {cities.map((cityOption, index) => (
                           <option key={`${cityOption.name}-${index}`} value={cityOption.name}>{cityOption.name}</option>
                         ))}
+                        {cities.length > 0 ? <option value={manualOptionValue}>Other / Enter manually</option> : null}
                       </select>
                     ) : (
                       <input name="city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="City" className={inputClass("city")} />
                     )}
+                    {manualCity ? (
+                      <input
+                        name="city"
+                        value={city}
+                        onChange={(event) => setCity(event.target.value)}
+                        placeholder="Enter city"
+                        className={`mt-3 w-full ${inputClass("city")}`}
+                      />
+                    ) : null}
                     {renderError("city")}
                   </div>
                   <div>
