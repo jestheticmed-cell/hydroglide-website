@@ -3,7 +3,7 @@
 import { ChevronDown, ChevronLeft, Search } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { formatCents } from "@/lib/format";
 import { useCart } from "./CartProvider";
@@ -21,10 +21,109 @@ const requiredFields = [
 
 type RequiredFieldName = (typeof requiredFields)[number]["name"];
 type CheckoutErrors = Partial<Record<RequiredFieldName, string>>;
+type CountryOption = { isoCode: string; name: string };
+type StateOption = { isoCode: string; name: string };
+type CityOption = { name: string };
 
 export function CheckoutClient() {
   const { items, subtotalCents, openCart } = useCart();
   const [errors, setErrors] = useState<CheckoutErrors>({});
+  const [countries, setCountries] = useState<CountryOption[]>([]);
+  const [states, setStates] = useState<StateOption[]>([]);
+  const [cities, setCities] = useState<CityOption[]>([]);
+  const [countryCode, setCountryCode] = useState("US");
+  const [stateCode, setStateCode] = useState("");
+  const [city, setCity] = useState("");
+  const [loadingCountries, setLoadingCountries] = useState(true);
+  const [loadingRegions, setLoadingRegions] = useState(true);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [locationError, setLocationError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCountries() {
+      setLoadingCountries(true);
+      try {
+        const response = await fetch("/api/locations", { signal: controller.signal });
+        const result = (await response.json()) as { countries?: CountryOption[]; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Unable to load countries");
+        setCountries(result.countries ?? []);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setLocationError(error instanceof Error ? error.message : "Unable to load countries");
+      } finally {
+        if (!controller.signal.aborted) setLoadingCountries(false);
+      }
+    }
+
+    void loadCountries();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadRegions() {
+      setLoadingRegions(true);
+      setStateCode("");
+      setCity("");
+      setStates([]);
+      setCities([]);
+      setErrors((current) => ({ ...current, state: undefined, city: undefined }));
+      setLocationError("");
+
+      try {
+        const response = await fetch(`/api/locations?country=${encodeURIComponent(countryCode)}`, { signal: controller.signal });
+        const result = (await response.json()) as { states?: StateOption[]; cities?: CityOption[]; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Unable to load regions");
+        setStates(result.states ?? []);
+        setCities(result.cities ?? []);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setLocationError(error instanceof Error ? error.message : "Unable to load regions");
+      } finally {
+        if (!controller.signal.aborted) setLoadingRegions(false);
+      }
+    }
+
+    void loadRegions();
+    return () => controller.abort();
+  }, [countryCode]);
+
+  useEffect(() => {
+    if (!stateCode) {
+      setLoadingCities(false);
+      return;
+    }
+    const controller = new AbortController();
+
+    async function loadCities() {
+      setLoadingCities(true);
+      setCity("");
+      setCities([]);
+      setErrors((current) => ({ ...current, city: undefined }));
+      setLocationError("");
+
+      try {
+        const response = await fetch(
+          `/api/locations?country=${encodeURIComponent(countryCode)}&state=${encodeURIComponent(stateCode)}`,
+          { signal: controller.signal }
+        );
+        const result = (await response.json()) as { cities?: CityOption[]; error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Unable to load cities");
+        setCities(result.cities ?? []);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setLocationError(error instanceof Error ? error.message : "Unable to load cities");
+      } finally {
+        if (!controller.signal.aborted) setLoadingCities(false);
+      }
+    }
+
+    void loadCities();
+    return () => controller.abort();
+  }, [countryCode, stateCode]);
 
   const inputClass = (field: RequiredFieldName) =>
     `h-14 rounded-lg border bg-white px-4 text-base outline-none focus:border-[#41b8ae] ${
@@ -38,8 +137,9 @@ export function CheckoutClient() {
 
     const formData = new FormData(event.currentTarget);
     const nextErrors = requiredFields.reduce<CheckoutErrors>((acc, field) => {
+      if (field.name === "state" && states.length === 0) return acc;
       const value = String(formData.get(field.name) ?? "").trim();
-      if (!value || value === "State") {
+      if (!value) {
         acc[field.name] = field.message;
       }
       return acc;
@@ -117,14 +217,25 @@ export function CheckoutClient() {
               <div className="mt-5 grid gap-4">
                 <label className="relative block">
                   <span className="absolute left-4 top-2 text-xs text-graphite">Country/Region</span>
-                  <select className="h-16 w-full appearance-none rounded-lg border border-line bg-white px-4 pt-5 text-base text-ink outline-none">
-                    <option>United States</option>
-                    <option>Canada</option>
-                    <option>Australia</option>
-                    <option>United Kingdom</option>
+                  <select
+                    name="country"
+                    value={countryCode}
+                    disabled={loadingCountries}
+                    onChange={(event) => {
+                      setStateCode("");
+                      setCities([]);
+                      setCountryCode(event.target.value);
+                    }}
+                    className="h-16 w-full appearance-none rounded-lg border border-line bg-white px-4 pt-5 text-base text-ink outline-none disabled:cursor-wait disabled:text-graphite"
+                  >
+                    {loadingCountries ? <option value="US">Loading countries...</option> : null}
+                    {countries.map((country) => (
+                      <option key={country.isoCode} value={country.isoCode}>{country.name}</option>
+                    ))}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-graphite" aria-hidden="true" />
                 </label>
+                {locationError ? <p className="text-[15px] leading-5 text-[#d83b0d]">{locationError}. You can still enter the address manually.</p> : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <input name="firstName" placeholder="First name" className={inputClass("firstName")} />
@@ -143,24 +254,53 @@ export function CheckoutClient() {
                 <input placeholder="Apartment, suite, etc. (optional)" className="h-14 rounded-lg border border-line bg-white px-4 text-base outline-none focus:border-[#41b8ae]" />
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <input name="city" placeholder="City" className={inputClass("city")} />
+                    {loadingRegions || loadingCities || (states.length > 0 && !stateCode) || cities.length > 0 ? (
+                      <select
+                        name="city"
+                        value={city}
+                        disabled={loadingRegions || loadingCities || (states.length > 0 && !stateCode)}
+                        onChange={(event) => setCity(event.target.value)}
+                        className={`h-14 w-full rounded-lg border bg-white px-4 text-base text-graphite outline-none focus:border-[#41b8ae] disabled:cursor-wait ${
+                          errors.city ? "border-[#d83b0d]" : "border-line"
+                        }`}
+                      >
+                        <option value="">
+                          {loadingRegions
+                            ? "Loading regions..."
+                            : loadingCities
+                              ? "Loading cities..."
+                              : states.length > 0 && !stateCode
+                                ? "Select state first"
+                                : "City"}
+                        </option>
+                        {cities.map((cityOption, index) => (
+                          <option key={`${cityOption.name}-${index}`} value={cityOption.name}>{cityOption.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input name="city" value={city} onChange={(event) => setCity(event.target.value)} placeholder="City" className={inputClass("city")} />
+                    )}
                     {renderError("city")}
                   </div>
                   <div>
-                    <select
-                      name="state"
-                      defaultValue=""
-                      className={`h-14 w-full rounded-lg border bg-white px-4 text-base text-graphite outline-none focus:border-[#41b8ae] ${
-                        errors.state ? "border-[#d83b0d]" : "border-line"
-                      }`}
-                    >
-                      <option value="">State</option>
-                      <option value="CA">California</option>
-                      <option value="FL">Florida</option>
-                      <option value="NY">New York</option>
-                      <option value="TX">Texas</option>
-                      <option value="WA">Washington</option>
-                    </select>
+                    {states.length > 0 || loadingRegions ? (
+                      <select
+                        name="state"
+                        value={stateCode}
+                        disabled={loadingRegions}
+                        onChange={(event) => setStateCode(event.target.value)}
+                        className={`h-14 w-full rounded-lg border bg-white px-4 text-base text-graphite outline-none focus:border-[#41b8ae] disabled:cursor-wait ${
+                          errors.state ? "border-[#d83b0d]" : "border-line"
+                        }`}
+                      >
+                        <option value="">{loadingRegions ? "Loading regions..." : "State / Province"}</option>
+                        {states.map((state) => (
+                          <option key={state.isoCode} value={state.isoCode}>{state.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input name="state" placeholder="State / Province (optional)" className="h-14 w-full rounded-lg border border-line bg-white px-4 text-base outline-none focus:border-[#41b8ae]" />
+                    )}
                     {renderError("state")}
                   </div>
                   <div>
